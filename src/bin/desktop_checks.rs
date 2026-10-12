@@ -216,6 +216,22 @@ fn run() -> Result<()> {
             std::path::Path::new(&args[4]),
         );
     }
+    if mode == "oneshot-python-console" {
+        return oneshot_support::verify_python_console(
+            &store.root,
+            std::path::Path::new(&args[3]),
+            std::path::Path::new(&args[4]),
+        );
+    }
+    if mode == "oneshot-cli-output" {
+        return oneshot_support::verify_cli_output(
+            &store.root,
+            std::path::Path::new(&args[3]),
+            std::path::Path::new(&args[4]),
+            &args[5],
+            &args[6],
+        );
+    }
     if mode == "untrust-test-ca" {
         tls_support::untrust(&store.root)?;
         return Ok(());

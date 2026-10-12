@@ -1,5 +1,13 @@
 # 一次性 MCP 安装向导验收（2026-10-12）
 
+## Python 入口终端输出修复
+
+真实 mcp-for-blender 2.1.9 的 `--help` 在旧 GUI 一次性终端中没有输出，但直接执行可以显示。原因是 GUI 绑定的 CONIN$ / CONOUT$ 句柄没有显式继承，uv 包入口继续启动解释器时丢失标准输入输出。修复创建进程时复制可继承的 stdin / stdout / stderr，设置 STARTF_USESTDHANDLES 并开启句柄继承；原挂起创建、Job Object 和精确环境继续使用。
+
+修复前后测试读取真实终端缓冲区：旧版帮助文本检查失败，新版完成。实际包的 `--help` 和 `addon-paths` 均显示输出并以 0 退出；后者使用中文工作目录和 `\\?\` 扩展路径。仅执行只读命令，未运行真实 setup 或 install-addon。受控 Python 验证 stdout、stderr、交互提示、输入及退出码；原受控 Node 终端 6 项生命周期检查、3 项一次性命令测试、格式及全目标 Clippy 通过。
+
+源码包原始记录包括 `verification/oneshot-blender-output-before.txt`、`oneshot-blender-output-after.txt`、`oneshot-blender-paths-checks.txt`、`oneshot-python-output-after.txt`、`oneshot-output-console-checks.txt` 和 `oneshot-output-unit-checks.txt`。本次不重复全套协议 / UI / TLS 或内存测量，原结果为历史基线。
+
 本地服务“管理此服务依赖”新增“一次性命令 / 安装向导”入口，支持在终端手动执行已安装包的 setup、install-addon、登录或其他命令参数。
 
 ## 操作示例

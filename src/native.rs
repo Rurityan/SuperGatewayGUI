@@ -11,7 +11,7 @@ use std::{
 use windows_sys::Win32::{
     Foundation::*,
     Security::SECURITY_ATTRIBUTES,
-    System::{JobObjects::*, Pipes::CreatePipe, Threading::*},
+    System::{Console::*, JobObjects::*, Pipes::CreatePipe, Threading::*},
 };
 
 pub fn wide(s: impl AsRef<OsStr>) -> Vec<u16> {
@@ -103,6 +103,33 @@ impl Child {
             }
             let mut startup: STARTUPINFOW = zeroed();
             startup.cb = size_of::<STARTUPINFOW>() as u32;
+            // Python/uv launchers forward standard handles to an interpreter.
+            // The GUI runner's console handles are not inheritable by default;
+            // pass explicit copies so interpreter input and output stay visible.
+            let mut console_handles = Vec::new();
+            for id in [STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE] {
+                let source = GetStdHandle(id);
+                let mut inherited = null_mut();
+                if source.is_null()
+                    || source == INVALID_HANDLE_VALUE
+                    || DuplicateHandle(
+                        GetCurrentProcess(),
+                        source,
+                        GetCurrentProcess(),
+                        &mut inherited,
+                        0,
+                        1,
+                        DUPLICATE_SAME_ACCESS,
+                    ) == 0
+                {
+                    return Err(error("复制交互终端标准句柄"));
+                }
+                console_handles.push(Handle(inherited));
+            }
+            startup.dwFlags = STARTF_USESTDHANDLES;
+            startup.hStdInput = console_handles[0].0;
+            startup.hStdOutput = console_handles[1].0;
+            startup.hStdError = console_handles[2].0;
             let mut process: PROCESS_INFORMATION = zeroed();
             let mut command = wide(
                 std::iter::once(quote(&exe.to_string_lossy()))
@@ -127,7 +154,7 @@ impl Child {
                 command.as_mut_ptr(),
                 null(),
                 null(),
-                0,
+                1,
                 CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT,
                 block.as_ptr().cast(),
                 wide(cwd).as_ptr(),

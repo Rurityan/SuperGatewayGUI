@@ -71,6 +71,170 @@ fn alive(pid: u32) -> bool {
         !handle.0.is_null() && WaitForSingleObject(handle.0, 0) == WAIT_TIMEOUT
     }
 }
+fn console_text(pid: u32) -> Result<String> {
+    use std::os::windows::io::AsRawHandle;
+    unsafe {
+        let saved = [STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE]
+            .map(|id| (id, GetStdHandle(id)));
+        FreeConsole();
+        let result = (|| {
+            if AttachConsole(pid) == 0 {
+                return Err(gateway::native::error("附加输出验收终端"));
+            }
+            let output = fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open("CONOUT$")
+                .map_err(|e| e.to_string())?;
+            let mut info = std::mem::zeroed();
+            if GetConsoleScreenBufferInfo(output.as_raw_handle(), &mut info) == 0 {
+                return Err(gateway::native::error("读取终端缓冲区"));
+            }
+            let mut text = vec![0u16; info.dwSize.X as usize * info.dwSize.Y as usize];
+            let mut read = 0;
+            if ReadConsoleOutputCharacterW(
+                output.as_raw_handle(),
+                text.as_mut_ptr(),
+                text.len() as u32,
+                COORD { X: 0, Y: 0 },
+                &mut read,
+            ) == 0
+            {
+                return Err(gateway::native::error("读取终端输出"));
+            }
+            Ok(String::from_utf16_lossy(&text[..read as usize])
+                .trim_end()
+                .to_owned())
+        })();
+        FreeConsole();
+        AttachConsole(ATTACH_PARENT_PROCESS);
+        for (id, handle) in saved {
+            SetStdHandle(id, handle);
+        }
+        result
+    }
+}
+/// Verify the actual terminal buffer, including stderr and interactive input.
+pub fn verify_python_console(root: &Path, gui: &Path, python: &Path) -> Result<()> {
+    use std::os::windows::process::CommandExt;
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join(".build")
+        .canonicalize()
+        .map_err(|e| e.to_string())?;
+    if !root
+        .canonicalize()
+        .map_err(|e| e.to_string())?
+        .starts_with(workspace)
+    {
+        return Err("只允许隔离的 .build 目录".into());
+    }
+    let invocation = oneshot::Invocation {
+        executable: python.to_path_buf(),
+        args: vec!["-I".into(), "-c".into(), "import sys; print('PYTHON_STDOUT_VISIBLE', flush=True); print('PYTHON_STDERR_VISIBLE', file=sys.stderr, flush=True); answer=input('PYTHON_INPUT_PROMPT:'); print('PYTHON_ACK:'+answer, flush=True)".into()],
+        environment: gateway::environment::snapshot().clone(),
+        directory: root.to_path_buf(),
+    };
+    let request = root.join("python-console.dat");
+    fs::write(
+        &request,
+        store::protect(&serde_json::to_vec(&invocation).unwrap(), true)?,
+    )
+    .map_err(|e| e.to_string())?;
+    let mut terminal = Command::new(gui)
+        .arg("--one-shot")
+        .arg(&request)
+        .env("PATH", "")
+        .creation_flags(CREATE_NEW_CONSOLE)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    let result = (|| {
+        wait(|| {
+            console_text(terminal.id()).is_ok_and(|text| {
+                text.contains("PYTHON_STDOUT_VISIBLE")
+                    && text.contains("PYTHON_STDERR_VISIBLE")
+                    && text.contains("PYTHON_INPUT_PROMPT:")
+            })
+        })?;
+        println!("PASS Python stdout, stderr and interactive prompt visible in terminal");
+        type_line(terminal.id(), "console-response\r")?;
+        wait(|| {
+            console_text(terminal.id()).is_ok_and(|text| {
+                text.contains("PYTHON_ACK:console-response") && text.contains("退出码：0")
+            })
+        })?;
+        println!("PASS Python reads terminal input and completes with exit zero");
+        type_line(terminal.id(), "\r")?;
+        wait(|| terminal.try_wait().ok().flatten().is_some())?;
+        Ok(())
+    })();
+    if result.is_err() {
+        eprintln!(
+            "Controlled Python console diagnostic: {:?}",
+            console_text(terminal.id())
+        );
+        let _ = terminal.kill();
+        let _ = terminal.wait();
+    }
+    result
+}
+pub fn verify_cli_output(
+    root: &Path,
+    gui: &Path,
+    exe: &Path,
+    argument: &str,
+    expected: &str,
+) -> Result<()> {
+    use std::os::windows::process::CommandExt;
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join(".build")
+        .canonicalize()
+        .map_err(|e| e.to_string())?;
+    if !root
+        .canonicalize()
+        .map_err(|e| e.to_string())?
+        .starts_with(workspace)
+    {
+        return Err("只允许隔离的 .build 目录".into());
+    }
+    let invocation = oneshot::Invocation {
+        executable: exe.to_path_buf(),
+        args: vec![argument.into()],
+        environment: gateway::environment::snapshot().clone(),
+        directory: root.into(),
+    };
+    let request = root.join("cli-output.dat");
+    fs::write(
+        &request,
+        store::protect(&serde_json::to_vec(&invocation).unwrap(), true)?,
+    )
+    .map_err(|e| e.to_string())?;
+    let mut terminal = Command::new(gui)
+        .arg("--one-shot")
+        .arg(&request)
+        .env("PATH", "")
+        .creation_flags(CREATE_NEW_CONSOLE)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    let result = (|| {
+        wait(|| {
+            console_text(terminal.id())
+                .is_ok_and(|text| text.contains(expected) && text.contains("退出码：0"))
+        })?;
+        println!("PASS read-only CLI output is visible in one-shot terminal with exit zero");
+        type_line(terminal.id(), "\r")?;
+        wait(|| terminal.try_wait().ok().flatten().is_some())?;
+        Ok(())
+    })();
+    if result.is_err() {
+        eprintln!(
+            "Read-only CLI console diagnostic: {:?}",
+            console_text(terminal.id())
+        );
+        let _ = terminal.kill();
+        let _ = terminal.wait();
+    }
+    result
+}
 pub fn verify(root: &Path, gui: &Path, dependencies: &Path) -> Result<()> {
     use std::os::windows::process::CommandExt;
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
