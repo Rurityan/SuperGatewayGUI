@@ -1,0 +1,52 @@
+# Build outputs and release packages.
+/.build/
+/target/
+# Old .NET implementation is retained locally, not published in this repository.
+/legacy/
+/artifacts/
+/verification/
+
+# Generated gateway bundle. Build scripts and dependency locks stay tracked.
+/engine/supergateway.exe
+/engine/THIRD_PARTY_LICENSES.txt
+/engine/LICENSE
+/engine/manifest.json
+
+# Runtime data when --data-dir points at the repository root.
+/settings.dat*
+/locations.json
+/storage.json
+/runtime/
+/one-shot/
+/exports/
+/tls/
+/tls-backup-*/
+/dependencies/
+/*.tmp
+
+# Local development environments and caches.
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# IDE state and machine-local settings; shared .vscode files remain allowed.
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rs.bk
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# OS metadata and crash dumps.
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.dmp
+*.stackdump
