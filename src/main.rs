@@ -2,20 +2,11 @@
 mod help;
 mod ui;
 fn main() {
-    gateway::environment::initialize();
-    if let Some(file) = std::env::args_os()
-        .collect::<Vec<_>>()
-        .windows(2)
-        .find(|v| v[0] == "--stdio-launch")
-    {
-        match gateway::stdio::run(std::path::Path::new(&file[1])) {
-            Ok(code) => std::process::exit(code as i32),
-            Err(error) => {
-                eprintln!("SuperGateway stdio：{error}");
-                std::process::exit(1);
-            }
-        }
+    // Retired exports must fail instead of accidentally opening another GUI.
+    if std::env::args_os().any(|arg| arg == "--stdio-launch") {
+        std::process::exit(1);
     }
+    gateway::environment::initialize();
     if let Some(file) = std::env::args_os()
         .collect::<Vec<_>>()
         .windows(2)

@@ -117,6 +117,8 @@ const TLS: i32 = 142;
 const MANAGED: i32 = 150;
 const INHERIT_ENV: i32 = 152;
 const PATHS: i32 = 153;
+const CLIENT_STARTUP: i32 = 171;
+const CLIENT_TOOL: i32 = 172;
 struct Field {
     window: HWND,
     x: i32,
@@ -856,9 +858,14 @@ impl App {
         self.add(self.hwnd, 4, "STATIC", "添加你的第一个 MCP 服务", 0);
         self.add(self.hwnd, 5, "STATIC", "支持本地程序、远程 HTTP 和 SSE", 0);
         self.add(self.hwnd, TAB, "SysTabControl32", "", WS_TABSTOP);
-        for (i, text) in ["基础配置", "高级设置", "环境 / 请求头 / 密钥"]
-            .iter()
-            .enumerate()
+        for (i, text) in [
+            "基础配置",
+            "高级设置",
+            "环境 / 请求头 / 密钥",
+            "客户端配置 / 导出",
+        ]
+        .iter()
+        .enumerate()
         {
             let name = wide(text);
             let item = TCITEMW {
@@ -895,8 +902,8 @@ impl App {
         );
         self.label_edit(COMMAND, "程序名或路径", 88, 30, 0, 1, false);
         self.field(113, "BUTTON", "浏览…", WS_TABSTOP, -92, 88, 78, 30, 0, 1);
-        self.label_edit(ARGS, "参数（每行一个）", 128, 60, 0, 1, false);
-        self.label_edit(CWD, "工作目录（可选）", 198, 30, 0, 1, false);
+        self.label_edit(ARGS, "参数（逐行）", 128, 60, 0, 1, false);
+        self.label_edit(CWD, "工作目录", 198, 30, 0, 1, false);
         self.field(114, "BUTTON", "目录…", WS_TABSTOP, -92, 198, 78, 30, 0, 1);
         self.label_edit(STDIO, "完整启动命令", 238, 56, 0, 1, false);
         let shell_hint = format!(
@@ -1017,7 +1024,7 @@ impl App {
             1,
             4,
         );
-        self.label_edit(TIMEOUT, "会话超时（毫秒）", 318, 30, 1, 4, false);
+        self.label_edit(TIMEOUT, "会话超时(ms)", 318, 30, 1, 4, false);
         self.combo(LEVEL, "日志级别", &["普通", "调试", "关闭"], 366, 1);
         self.field(
             TLS,
@@ -1161,6 +1168,63 @@ impl App {
             1,
         );
         self.field(156, "STATIC", "托管 PATH：虚拟环境 → 托管工具 → 附加目录 → Windows → 继承 PATH。列表顺序为查找顺序；移动目录后重新导出。", 0, 12, 774, -14, 65, 2, 1);
+        self.field(
+            170,
+            "STATIC",
+            "仅生成客户端连接配置 · 请先启动 GUI 网关",
+            0,
+            12,
+            14,
+            -14,
+            35,
+            3,
+            0,
+        );
+        self.label_edit(CLIENT_STARTUP, "启动超时（秒）", 65, 30, 3, 0, false);
+        self.label_edit(CLIENT_TOOL, "工具超时（秒）", 111, 30, 3, 0, false);
+        self.field(
+            173,
+            "STATIC",
+            "超时留空使用客户端默认值，范围 1–86400 秒；仅 Codex TOML 导出。不是网关会话空闲超时。",
+            0,
+            12,
+            153,
+            -14,
+            45,
+            3,
+            0,
+        );
+        self.field(175, "STATIC", "此页仅影响导出的客户端配置，不改变网关或 MCP 服务。HTTP 请求不创建本地 MCP 子进程，不导出环境变量。服务变量在“环境 / 请求头 / 密钥”页设置。JSON 不包含 Codex 超时字段。", 0, 12, 209, -14, 95, 3, 0);
+        for (i, (id, name)) in [(38, "复制 Codex TOML"), (39, "复制客户端 JSON")]
+            .iter()
+            .enumerate()
+        {
+            self.field(
+                *id,
+                "BUTTON",
+                name,
+                WS_TABSTOP,
+                12 + (i % 2) as i32 * 230,
+                325 + (i / 2) as i32 * 43,
+                218,
+                32,
+                3,
+                0,
+            );
+        }
+        self.field(176, "STATIC", "客户端参数只用于导出。认证取当前网关访问密钥；不复制上游认证或 MCP 环境。JSON 支持 HTTP / SSE；Codex TOML 仅支持 Streamable HTTP，不生成 stdio 桥接。", 0, 12, 375, -14, 75, 3, 0);
+        self.field(
+            36,
+            "BUTTON",
+            "复制网关配置",
+            WS_TABSTOP,
+            144,
+            510,
+            218,
+            32,
+            1,
+            0,
+        );
         for (id, text) in [
             (30, "保存配置"),
             (31, "启动"),
@@ -1168,9 +1232,6 @@ impl App {
             (33, "应用并重启"),
             (34, "测试连接"),
             (35, "复制连接地址"),
-            (36, "复制网关配置"),
-            (37, "导出 stdio 配置"),
-            (38, "复制 Codex TOML"),
         ] {
             self.add(self.hwnd, id, "BUTTON", text, WS_TABSTOP);
         }
@@ -1187,7 +1248,7 @@ impl App {
         );
         SendMessageW(self.ctrl(40), EM_SETLIMITTEXT, 256 * 1024, 0);
         self.add(self.hwnd, 41, "BUTTON", "清空日志", WS_TABSTOP);
-        for id in [TAB, PANEL, 30, 31, 32, 33, 34, 35, 36, 37, 38] {
+        for id in [TAB, PANEL, 30, 31, 32, 33, 34, 35, 36, 38, 39] {
             EnableWindow(self.ctrl(id), 0);
         }
     }
@@ -1228,7 +1289,7 @@ impl App {
             self.move_control(*id, 274 + i as i32 * 113, action_y, 106, 32);
         }
         let export_width = (width - 294) / 4;
-        for (i, id) in [35, 36, 37, 38].iter().enumerate() {
+        for (i, id) in [35].iter().enumerate() {
             self.move_control(
                 *id,
                 274 + i as i32 * export_width,
@@ -1246,7 +1307,9 @@ impl App {
         for id in [COMMAND, ARGS, 113] {
             EnableWindow(self.ctrl(id), original as i32);
         }
-        let max = if self.page == 2 {
+        let max = if self.page == 3 {
+            690
+        } else if self.page == 2 {
             850
         } else if self.page == 0 && source != 0 {
             360
@@ -1459,6 +1522,20 @@ impl App {
         self.check_set(STATEFUL, p.stateful);
         self.check_set(TLS, p.tls);
         self.set(TIMEOUT, &p.session_timeout.to_string());
+        self.set(
+            CLIENT_STARTUP,
+            &p.client
+                .startup_timeout_sec
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+        );
+        self.set(
+            CLIENT_TOOL,
+            &p.client
+                .tool_timeout_sec
+                .map(|v| v.to_string())
+                .unwrap_or_default(),
+        );
         self.combo_set(
             LEVEL,
             match p.log_level.as_str() {
@@ -1469,7 +1546,7 @@ impl App {
         );
         self.pair_lists();
         SendMessageW(self.ctrl(LIST), LB_SETCURSEL, index, 0);
-        for id in [TAB, PANEL, 30, 31, 32, 33, 34, 35, 36, 37, 38] {
+        for id in [TAB, PANEL, 30, 31, 32, 33, 34, 35, 36, 38, 39] {
             EnableWindow(
                 self.ctrl(id),
                 if self.busy && [30, 31, 32, 33, 34].contains(&id) {
@@ -1488,6 +1565,21 @@ impl App {
             return Err("请先添加或选择服务".into());
         }
         let mut p = self.draft.clone();
+        let seconds = |id| -> Result<Option<u32>> {
+            let value = self.text(id);
+            if value.trim().is_empty() {
+                Ok(None)
+            } else {
+                value
+                    .trim()
+                    .parse()
+                    .map(Some)
+                    .map_err(|_| "客户端超时须为整数秒，或留空".into())
+            }
+        };
+        p.client.stdio = false; // Legacy field; GUI exports only network connections.
+        p.client.startup_timeout_sec = seconds(CLIENT_STARTUP)?;
+        p.client.tool_timeout_sec = seconds(CLIENT_TOOL)?;
         p.name = self.text(NAME).trim().into();
         p.source = match self.combo_index(SOURCE) {
             1 => "http",
@@ -1671,7 +1763,7 @@ impl App {
         if let Some(state) = self.states.get_mut(&p.id)
             && ["网关运行", "MCP 验证成功", "MCP 验证失败"].contains(&state.0.as_str())
         {
-            state.2 = p != self.saved || state.2;
+            state.2 = !p.gateway_eq(&self.saved) || state.2;
         }
         self.draft = p.clone();
         self.saved = p.clone();
@@ -1964,7 +2056,7 @@ impl App {
         if self.loading {
             return Ok(());
         }
-        if self.busy && ![17, 18, 36, 37, 41, LIST, TAB, SOURCE, OUTPUT].contains(&id) {
+        if self.busy && ![17, 18, 36, 41, LIST, TAB, SOURCE, OUTPUT].contains(&id) {
             return Ok(());
         }
         match id {
@@ -2018,7 +2110,7 @@ impl App {
                         if !self.settings.services.is_empty() {
                             self.select(i.min(self.settings.services.len() - 1));
                         } else {
-                            for id in [TAB, PANEL, 30, 31, 32, 33, 34, 35, 36, 37, 38] {
+                            for id in [TAB, PANEL, 30, 31, 32, 33, 34, 35, 36, 38, 39] {
                                 EnableWindow(self.ctrl(id), 0);
                             }
                             self.set(4, "添加你的第一个 MCP 服务");
@@ -2226,9 +2318,25 @@ impl App {
                     self.set(CWD, &path.to_string_lossy());
                 }
             }
-            30 => {
-                self.save()?;
-            }
+            30 => match self.save() {
+                Ok(p) => {
+                    let pending = self.states.get(&p.id).is_some_and(|state| state.2);
+                    let detail = if pending {
+                        "\n运行中的服务有待应用修改，请点击“应用并重启”使其生效。"
+                    } else if self.needs_install(&p) {
+                        "\n依赖尚未安装，可通过“配置包与安装依赖”安装。保存不会下载或运行服务。"
+                    } else {
+                        ""
+                    };
+                    self.message(
+                        &format!("配置保存成功。{detail}"),
+                        MB_OK | MB_ICONINFORMATION,
+                    );
+                }
+                Err(error) => {
+                    self.message(&format!("配置保存失败：\n{error}"), MB_OK | MB_ICONERROR);
+                }
+            },
             31 | 33 => {
                 let p = self.save()?;
                 self.worker(move |manager| {
@@ -2286,69 +2394,58 @@ impl App {
                 self.refresh_addresses(&host);
                 self.worker(|manager| manager.refresh_tls(false));
             }
-            38 => {
+            38 | 39 => {
+                let draft = self.read()?;
+                gateway::client::validate(&draft.client)?;
                 let p = self
                     .settings
                     .services
                     .get(self.selected.ok_or("请先选择服务")?)
                     .ok_or("服务不存在")?;
-                let active = self.manager.active(p);
+                let mut active = self.manager.active(p);
+                active.client = draft.client.clone();
                 let ca = gateway::tls::ca_path(&self.store.root);
-                let content =
-                    config::codex_export_with_ca(&active, &self.manager.engine, Some(&ca))?;
                 if (!active.api_key.is_empty() || active.api_keys.iter().any(|key| !key.is_empty()))
                     && self.message(
-                        "Codex 配置包含明文网关访问密钥。继续复制？",
+                        "客户端配置包含认证信息，请保存到可信位置。继续？",
+                        MB_YESNO | MB_ICONWARNING,
+                    ) != IDYES
+                {
+                    return Ok(());
+                }
+                let content = if id == 38 {
+                    config::codex_export_with_ca(&active, &self.manager.engine, Some(&ca))?
+                } else {
+                    gateway::client::network_json(&active, &self.manager.engine, Some(&ca))?
+                };
+                if id == 39 && (draft.client.startup_timeout_sec.is_some() || draft.client.tool_timeout_sec.is_some())
+                    && self.message("通用 JSON 不包含 Codex 专属启动 / 工具超时字段；由目标客户端自行设置。继续复制？", MB_YESNO | MB_ICONINFORMATION) != IDYES { return Ok(()); }
+                clipboard_write(self.hwnd, &content)?;
+            }
+            36 => {
+                let p = self.read()?;
+                if !p.inherit_environment {
+                    return Err(
+                        "网关 JSON 本身不能限制环境继承。请由 GUI 启动服务以保留环境设置。".into(),
+                    );
+                }
+                let content = config::build(
+                    &gateway::environment::prepare(&gateway::dependencies::prepared(
+                        &self.store.root,
+                        &p,
+                    )?)?,
+                    false,
+                )?
+                .0;
+                if !p.secrets().is_empty()
+                    && self.message(
+                        "导出的网关配置包含明文环境变量或认证信息，请保存到可信位置。继续？",
                         MB_YESNO | MB_ICONWARNING,
                     ) != IDYES
                 {
                     return Ok(());
                 }
                 clipboard_write(self.hwnd, &content)?;
-            }
-            36 | 37 => {
-                let p = self.read()?;
-                let content = if id == 36 {
-                    if !p.inherit_environment {
-                        return Err("网关 JSON 本身不能禁止继承启动者环境。请使用“导出 stdio 客户端配置”保留严格环境设置，或由 GUI 启动此服务。".into());
-                    }
-                    config::build(
-                        &gateway::environment::prepare(&gateway::dependencies::prepared(
-                            &self.store.root,
-                            &p,
-                        )?)?,
-                        false,
-                    )?
-                    .0
-                } else {
-                    // Confirm before writing a persistent encrypted launch record.
-                    if self.message("导出使用内置 stdio 启动器和加密环境快照，供当前 Windows 用户使用。移动应用 / 数据 / 依赖目录或修改配置后需重新导出。继续？", MB_YESNO | MB_ICONQUESTION) != IDYES { return Ok(()); }
-                    gateway::stdio::export(
-                        &self.store.root,
-                        &p,
-                        &self.manager.engine,
-                        &std::env::current_exe().map_err(|e| e.to_string())?,
-                    )?
-                };
-                if !p.secrets().is_empty()
-                    && self.message(
-                        "导出的配置包含明文环境变量或认证信息，请只保存到可信位置。继续？",
-                        MB_YESNO | MB_ICONWARNING,
-                    ) != IDYES
-                {
-                    return Ok(());
-                }
-                if id == 36 {
-                    clipboard_write(self.hwnd, &content)?;
-                } else if let Some(path) =
-                    native::file_dialog(self.hwnd, true, "JSON 配置|*.json", "mcp-client.json")
-                {
-                    fs::write(path, content).map_err(|e| e.to_string())?;
-                    self.message(
-                        "已导出。由 MCP 客户端启动和停止网关；移动便携目录后请重新导出。",
-                        MB_ICONINFORMATION,
-                    );
-                }
             }
             131..=133 | 135..=137 | 139..=141 => {
                 let base = if id < 134 {
@@ -2638,6 +2735,13 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                             String::from_utf16_lossy(&value[..value.len() - 1])
                         };
                         modal.values = vec![read(500), read(501)];
+                        if !GetDlgItem(hwnd, 505).is_null() {
+                            modal.values.push(
+                                (SendMessageW(GetDlgItem(hwnd, 505), BM_GETCHECK, 0, 0)
+                                    == BST_CHECKED as isize)
+                                    .to_string(),
+                            );
+                        }
                         if modal.values[0].trim().is_empty() && !modal.key
                             || modal.values[1].is_empty() && modal.key
                         {
@@ -2935,6 +3039,15 @@ unsafe fn preview(owner: HWND, font: HFONT, title: &str, text: &str, accept: Opt
     accept.is_some() && modal.result == Some(true)
 }
 unsafe fn pair_dialog(owner: HWND, font: HFONT, pair: Pair, key: bool) -> Option<Pair> {
+    pair_dialog_enabled(owner, font, pair, key, None).map(|v| v.0)
+}
+unsafe fn pair_dialog_enabled(
+    owner: HWND,
+    font: HFONT,
+    pair: Pair,
+    key: bool,
+    enabled: Option<bool>,
+) -> Option<(Pair, bool)> {
     let modal = modal_window(
         owner,
         font,
@@ -3005,6 +3118,25 @@ unsafe fn pair_dialog(owner: HWND, font: HFONT, pair: Pair, key: bool) -> Option
         32,
     );
     modal_control(&modal, 2, "BUTTON", "取消", WS_TABSTOP, 406, 198, 104, 32);
+    if let Some(enabled) = enabled {
+        let checkbox = modal_control(
+            &modal,
+            505,
+            "BUTTON",
+            "启用此变量（写入导出）",
+            BS_AUTOCHECKBOX as u32 | WS_TABSTOP,
+            120,
+            156,
+            270,
+            28,
+        );
+        SendMessageW(
+            checkbox,
+            BM_SETCHECK,
+            if enabled { BST_CHECKED } else { BST_UNCHECKED } as usize,
+            0,
+        );
+    }
     SetFocus(if key {
         GetDlgItem(modal.hwnd, 501)
     } else {
@@ -3012,10 +3144,13 @@ unsafe fn pair_dialog(owner: HWND, font: HFONT, pair: Pair, key: bool) -> Option
     });
     modal_loop(owner, modal.hwnd);
     if modal.result == Some(true) {
-        Some(Pair {
-            key: modal.values[0].trim().into(),
-            value: modal.values[1].clone(),
-        })
+        Some((
+            Pair {
+                key: modal.values[0].trim().into(),
+                value: modal.values[1].clone(),
+            },
+            modal.values.get(2).is_none_or(|v| v == "true"),
+        ))
     } else {
         None
     }

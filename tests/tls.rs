@@ -1,17 +1,10 @@
-use gateway::{
-    config,
-    manager::Manager,
-    model::Profile,
-    native::{Child, wide},
-    net, store, tls,
-};
+use gateway::{config, manager::Manager, model::Profile, native::wide, net, store, tls};
 use serde_json::{Value, json};
 #[path = "support/tls.rs"]
 mod tls_support;
 use std::{
-    collections::BTreeMap,
     fs,
-    io::{BufRead, BufReader, Write},
+    io::Write,
     path::{Path, PathBuf},
     sync::mpsc,
     thread,
@@ -82,60 +75,6 @@ fn fingerprint(port: u16, root: &Path) -> Vec<u8> {
     }
     conn.peer_certificates().unwrap()[0].to_vec()
 }
-fn stdio_sse(p: &Profile, engine: &Path, root: &Path) {
-    let document: toml::Value = toml::from_str(
-        &config::codex_export_with_ca(p, engine, Some(&tls::ca_path(root))).unwrap(),
-    )
-    .unwrap();
-    let entry = document["mcp_servers"]
-        .as_table()
-        .unwrap()
-        .values()
-        .next()
-        .unwrap();
-    assert!(entry["args"][1].as_str().unwrap().starts_with("https://"));
-    let args = entry["args"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|v| v.as_str().unwrap().to_owned())
-        .collect::<Vec<_>>();
-    let env = entry["env"]
-        .as_table()
-        .unwrap()
-        .iter()
-        .map(|(k, v)| (k.clone(), v.as_str().unwrap().to_owned()))
-        .collect::<BTreeMap<_, _>>();
-    let mut child = Child::spawn(engine, &args, &env, root).unwrap();
-    let errors = child.errors.take().unwrap();
-    let error_reader = thread::spawn(move || for _ in BufReader::new(errors).lines() {});
-    let output = child.output.take().unwrap();
-    let (tx, rx) = mpsc::channel();
-    let reader = thread::spawn(move || {
-        for line in BufReader::new(output).lines().map_while(Result::ok) {
-            let _ = tx.send(line);
-        }
-    });
-    let mut input = child.input.take().unwrap();
-    for message in [
-        json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"tls-check","version":"1"}}}),
-        json!({"jsonrpc":"2.0","method":"notifications/initialized"}),
-        json!({"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}),
-    ] {
-        writeln!(input, "{message}").unwrap();
-        input.flush().unwrap();
-        if message.get("id").is_some() {
-            let response: Value =
-                serde_json::from_str(&rx.recv_timeout(Duration::from_secs(15)).unwrap()).unwrap();
-            assert!(response.get("error").is_none(), "{response}");
-        }
-    }
-    drop(input);
-    child.stop();
-    reader.join().unwrap();
-    error_reader.join().unwrap();
-}
-
 #[test]
 fn native_https_sse_wss_share_certificate_authenticate_and_renew_without_restart() {
     let root = std::env::temp_dir().join(format!("SG TLS 协议 {}", gateway::model::new_id()));
@@ -206,7 +145,6 @@ fn native_https_sse_wss_share_certificate_authenticate_and_renew_without_restart
             "TLS port must not serve plaintext"
         );
     }
-    stdio_sse(&profiles[1], &engine, &root);
     let mut held = net::Session::connect(&profiles[2], Duration::from_secs(25)).unwrap();
     held.tools().unwrap();
     let pids = profiles

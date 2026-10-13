@@ -33,13 +33,14 @@ cargo build --release --locked
 | `src/main.rs`、`ui.rs`、`ui_dependencies.rs`、`help.rs` | 启动入口、原生控件、依赖管理界面和内嵌中文帮助 |
 | `src/model.rs`、`store.rs`、`storage.rs` | PascalCase 配置、DPAPI、原子保存、备份和配置 / 依赖路径 |
 | `src/config.rs`、`shell.rs`、`environment.rs` | 配置校验与生成、启动解释器、每服务环境合并和 PATH |
+| `src/client.rs` | 客户端导出选项校验、稳定 Codex 表名、超时映射与网络 JSON 导出 |
 | `src/manager.rs`、`native.rs` | 独立服务状态、工作线程、Win32 进程 / 管道 / Job Object |
-| `src/dependencies.rs`、`oneshot.rs`、`stdio.rs` | 固定环境与包安装、一次性终端向导、加密 stdio 导出启动器 |
+| `src/dependencies.rs`、`oneshot.rs` | 固定环境与包安装、一次性终端向导 |
 | `src/net.rs`、`network.rs`、`tls.rs`、`startup.rs` | MCP 协议诊断、网卡发现、内嵌 TLS、普通 / 管理员登录启动 |
 | `src/bin`、`tests` | 自包含 MCP 模拟程序、核心 / UI 检查和专项集成测试 |
 | `assets`、`build.rs`、`app.manifest` | 图标源图及提示词、许可、Windows 资源和 DPI 清单 |
 
-GUI 通过工作线程执行进程与网络操作，用消息和事件更新界面。每个服务独立网关和端口。GUI 创建进程时先挂起，加入 Job Object 再恢复；停止先关闭 stdin，8 秒后仍未退出则清理进程树。stdio 客户端启动器有独立生命周期；一次性终端可以在 GUI 退出后继续由用户操作。
+GUI 通过工作线程执行进程与网络操作，用消息和事件更新界面。每个服务独立网关和端口。GUI 创建进程时先挂起，加入 Job Object 再恢复；停止先关闭 stdin，8 秒后仍未退出则清理进程树。一次性终端可以在 GUI 退出后继续由用户操作。
 
 GUI 实例由当前用户 SID 和规范化配置目录共同识别，显式 / 默认指定同一配置目录使用同一实例。再次前台启动通过注册的窗口消息恢复已有实例，后台启动不弹窗；寻找窗口先于打开互斥锁，以兼容普通权限打开同用户的管理员实例。UIPI 仅放行窗口恢复、托盘回调及 `TaskbarCreated` 消息，恢复请求不接受配置或进程参数。资源管理器重新创建任务栏后重新注册图标，图标不可用则显示窗口；登录任务仍使用交互式令牌，不能运行在非交互桌面。
 
@@ -51,7 +52,10 @@ GUI 实例由当前用户 SID 和规范化配置目录共同识别，显式 / �
 
 GUI 启动环境快照只读。变量名不区分大小写，服务变量覆盖继承值，空值保持；不写用户 / 系统环境变量。托管 PATH 顺序为服务虚拟环境、托管工具、服务附加目录、Windows 必要目录、继承 PATH。关闭继承省略最后一项；原有程序模式仍允许显式 PATH 覆盖，附加目录排在前面。正常服务、完整命令和一次性向导采用同一环境规则，安装任务有单独受控环境。
 
-保留旧配置默认值、PascalCase、DPAPI 和读取失败不覆盖机制。配置目录保存 `settings.dat`、证书、备份与 `exports`；依赖目录可独立设置，路径记录在 `storage.json`。移动配置复制到空目录并保留原件，依赖不迁移。加密记录绑定当前 Windows 用户；stdio 导出保存入口和环境快照，移动目录或改变配置后重新导出。
+保留旧配置默认值、PascalCase、DPAPI 和读取失败不覆盖机制。配置目录保存 `settings.dat`、证书、备份与 `exports`；依赖目录可独立设置，路径记录在 `storage.json`。移动配置复制到空目录并保留原件，依赖不迁移。加密记录绑定当前 Windows 用户；旧 exports 记录保留，但不再提供 stdio 启动器和输出配置。
+
+Client 仅用于客户端连接配置，StartupTimeoutSec / ToolTimeoutSec 只导出 Codex TOML。Environment / Stdio 旧字段保留反序列化兼容，不用于网关运行或网络导出；GUI 保存时 Stdio 为 false。客户端参数不参与 gateway_eq，不产生待应用或改变 MCP 环境。已删除 stdio 导出模块、启动入口及 SSE 转 stdio 桥接导出；Codex TOML 仅 HTTP，JSON 支持原生 HTTP / SSE。
+显式“保存配置”按钮在持久化成功后显示确认弹窗，并提示待应用或待安装；失败显示具体错误。启动前及未保存确认流程继续复用 `save()`，不额外显示成功弹窗。保存反馈更新后原生 UI 检查为 93 项，核心与客户端测试保留此前回归结果。
 
 界面下拉框通过公共创建函数安装 Win32 subclass。收起时转发垂直滚轮到所在页面；展开时下拉框和弹出列表忽略滚轮，点击及键盘仍可选择。新下拉框应使用这些创建函数，避免重新引入滚动误改。
 
@@ -76,7 +80,7 @@ GUI 启动环境快照只读。变量名不区分大小写，服务变量覆盖�
 
 `write-validation.ps1` 是历史测量报告生成器，会重写 `VALIDATION.md`。不要把它作为常规发布步骤；需要重做测量时先保留现有报告，再合并新结果及当前功能验收。
 
-最新验证摘要见 [VALIDATION](VALIDATION.md) 顶部。后台恢复修复后完整回归含 70 项核心及 82 项 UI 检查，覆盖实际后台启动和重复实例恢复；真实管理员计划任务重新登录仍需人工验收。UI 计数包含逐网卡检查，会随测试机器网卡数量变化。当前未完成干净 Windows 10/11 虚拟机验收、真实 Blender setup、多显示器人工 DPI 验收或新的内存 / 冷启动测量。
+最新验证摘要见 [VALIDATION](VALIDATION.md) 顶部。之前包含独立 stdio 的检查结果是历史基线；删除该输出后同步删除对应测试，保留本地 stdio 输入、远程网络转接、协议、TLS、环境隔离及配置恢复检查。原生 UI 增加字段标签实际字体尺寸检查。真实管理员计划任务重新登录仍需人工验收。UI 计数包含逐网卡检查，会随测试机器网卡数量变化。当前未完成干净 Windows 10/11 虚拟机验收、真实 Blender setup、多显示器人工 DPI 验收或新的内存 / 冷启动测量。
 
 ## 打包与 GitHub 发布
 
@@ -92,4 +96,4 @@ GitHub 源码提交包含 `src`、`tests`、`scripts`、`assets`、`.cargo`、Ca
 
 Release 附件使用 `SuperGatewayGUI-win-x64.zip`、`SuperGatewayGUI-source.zip` 及各自 `.sha256`；源码不包含网关 EXE，构建方式已在上文说明。保留便携包中的许可。发布说明可从 [CHANGELOG](CHANGELOG.md) 整理；按实际准备发布的版本设置标签，本文不创建标签或上传仓库。
 
-验证原始记录位于本地 `artifacts` 或源码发布包 `verification`，两者并非必须提交到 Git 的源码文件。发布时以对应 ZIP 的 SHA256 为准，重打包文档也会改变 ZIP 校验值。当前网关的远程 HTTP → stdio 在 stdin EOF 后可能出现 libuv 断言；保持真实退出码和错误，详见 [环境验收限制](ENVIRONMENT_VALIDATION.md#限制)。
+验证原始记录位于本地 `artifacts` 或源码发布包 `verification`，两者并非必须提交到 Git 的源码文件。发布时以对应 ZIP 的 SHA256 为准，重打包文档也会改变 ZIP 校验值。上游远程 HTTP → stdio 的历史退出断言记录见 [环境验收限制](ENVIRONMENT_VALIDATION.md#限制)；当前应用不再提供该输出。

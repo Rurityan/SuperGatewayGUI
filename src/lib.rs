@@ -1,3 +1,4 @@
+pub mod client;
 pub mod config;
 pub mod dependencies;
 pub mod environment;
@@ -9,7 +10,6 @@ pub mod network;
 pub mod oneshot;
 pub mod shell;
 pub mod startup;
-pub mod stdio;
 pub mod storage;
 pub mod store;
 pub mod tls;

@@ -680,10 +680,42 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
     let control = |id| GetDlgItem(panel, id);
     let action = |id| {
         PostMessageW(h, WM_COMMAND, id, 0);
+        if id == 30 {
+            let prompt = ready_dialog(pid, h, "SuperGateway").expect("save result dialog");
+            let mut text = [0u16; 2048];
+            GetWindowTextW(
+                GetDlgItem(prompt, 65535),
+                text.as_mut_ptr(),
+                text.len() as i32,
+            );
+            assert!(String::from_utf16_lossy(&text).contains("配置保存成功"));
+            // MB_OK uses IDCANCEL for its sole button on some Windows versions.
+            // Closing the system message box works independently of that ID.
+            PostMessageW(prompt, WM_CLOSE, 0, 0);
+            wait(|| IsWindowEnabled(h) != 0).expect("save result dialog dismissed");
+        }
         thread::sleep(Duration::from_millis(200));
     };
     action(10);
     check(IsWindowEnabled(control(100)) != 0, "native form enabled")?;
+    for id in [1103, 1104] {
+        let label = control(id);
+        let mut text = [0u16; 128];
+        let length = GetWindowTextW(label, text.as_mut_ptr(), text.len() as i32);
+        let dc = GetDC(label);
+        let font = SendMessageW(label, WM_GETFONT, 0, 0);
+        let old = SelectObject(dc, font as *mut _);
+        let mut extent = std::mem::zeroed();
+        let measured = GetTextExtentPoint32W(dc, text.as_ptr(), length, &mut extent);
+        SelectObject(dc, old);
+        ReleaseDC(label, dc);
+        let mut rect = std::mem::zeroed();
+        GetClientRect(label, &mut rect);
+        check(
+            measured != 0 && extent.cx <= rect.right && extent.cy <= rect.bottom,
+            "argument and working directory labels fit without clipping at current DPI",
+        )?;
+    }
     let mut hint = [0u16; 512];
     SendMessageW(
         control(115),
@@ -740,6 +772,37 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
             && store.load()?.services[0].listen_host() == "127.0.0.1",
         "form edits saved with empty PATH",
     )?;
+    check(true, "explicit save displays successful result dialog")?;
+    SendMessageW(control(100), WM_SETTEXT, 0, wide("").as_ptr() as isize);
+    PostMessageW(h, WM_COMMAND, 30, 0);
+    let failed_save = ready_dialog(pid, h, "SuperGateway")?;
+    let mut failure_text = [0u16; 2048];
+    GetWindowTextW(
+        GetDlgItem(failed_save, 65535),
+        failure_text.as_mut_ptr(),
+        failure_text.len() as i32,
+    );
+    let failure_text = String::from_utf16_lossy(&failure_text);
+    if !failure_text.contains("配置保存失败") || !failure_text.contains("请输入服务名称")
+    {
+        eprintln!("unexpected save failure dialog: {failure_text}");
+    }
+    check(
+        failure_text.contains("配置保存失败") && failure_text.contains("请输入服务名称"),
+        "invalid save displays failure dialog with specific reason",
+    )?;
+    check(
+        store.load()?.services[0].name == "中文界面验收",
+        "failed save preserves previously stored configuration",
+    )?;
+    PostMessageW(failed_save, WM_CLOSE, 0, 0);
+    wait(|| IsWindowEnabled(h) != 0)?;
+    SendMessageW(
+        control(100),
+        WM_SETTEXT,
+        0,
+        wide("中文界面验收").as_ptr() as isize,
+    );
     action(38);
     let copied = clipboard_text(h)?;
     check(
@@ -974,6 +1037,9 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
     )?;
     let mut dependency_rect: windows_sys::Win32::Foundation::RECT = std::mem::zeroed();
     GetWindowRect(deps_window, &mut dependency_rect);
+    // Keep themed hover animations out of the scrolling pixel comparison.
+    // This dialog may open underneath the cursor left on the main caption.
+    SetCursorPos(dependency_rect.left + 30, dependency_rect.top + 12);
     SetWindowPos(
         deps_window,
         null_mut(),
@@ -1345,6 +1411,40 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
     PostMessageW(help, WM_CLOSE, 0, 0);
     wait(|| IsWindow(help) == 0)?;
     check(IsWindowEnabled(h) != 0, "closing help restores owner")?;
+    check(
+        SendMessageW(tab, TCM_GETITEMCOUNT, 0, 0) == 4,
+        "client export has a dedicated fourth tab",
+    )?;
+    SendMessageW(tab, TCM_SETCURSEL, 3, 0);
+    // Keyboard navigation delivers the existing tab notification path.
+    SendMessageW(tab, WM_KEYDOWN, 0x25, 0);
+    SendMessageW(tab, WM_KEYUP, 0x25, 0);
+    SendMessageW(tab, WM_KEYDOWN, 0x27, 0);
+    SendMessageW(tab, WM_KEYUP, 0x27, 0);
+    wait(|| IsWindowVisible(control(171)) != 0)?;
+    check(
+        GetParent(control(38)) == panel && IsWindowVisible(control(38)) != 0,
+        "Codex export button is inside client tab",
+    )?;
+    for (id, value) in [(171, "20"), (172, "300")] {
+        SendMessageW(control(id), WM_SETTEXT, 0, wide(value).as_ptr() as isize);
+    }
+    action(30);
+    check(
+        store.load()?.services[0].client.startup_timeout_sec == Some(20)
+            && store.load()?.services[0].client.tool_timeout_sec == Some(300),
+        "client timeout options persist independently",
+    )?;
+    check(
+        control(37).is_null()
+            && control(180).is_null()
+            && SendMessageW(control(170), CB_GETCOUNT, 0, 0) == 0,
+        "client tab has no stdio mode, export button or subprocess environment editor",
+    )?;
+    check(
+        !store.load()?.services[0].client.stdio,
+        "legacy stdio preference cannot select independent output",
+    )?;
     PostMessageW(h, WM_CLOSE, 0, 0);
     thread::sleep(Duration::from_millis(150));
     check(IsWindowVisible(h) == 0, "close minimizes to tray")?;

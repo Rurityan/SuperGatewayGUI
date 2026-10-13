@@ -6,13 +6,12 @@ use gateway::{
     net,
     store::Store,
 };
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::{
     collections::BTreeMap,
     fs,
-    io::{BufRead, BufReader, Write},
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::Command,
     sync::mpsc,
     thread,
 };
@@ -77,14 +76,10 @@ fn defaults_validation_preview_and_encrypted_restoration() {
     fs::remove_dir_all(root).unwrap();
 }
 #[test]
-fn service_environment_protocols_and_stdio_export() {
+fn service_environment_protocols() {
     if std::env::var("SG_ENVIRONMENT_TEST_CHILD").is_err() {
         let status = Command::new(std::env::current_exe().unwrap())
-            .args([
-                "--exact",
-                "service_environment_protocols_and_stdio_export",
-                "--nocapture",
-            ])
+            .args(["--exact", "service_environment_protocols", "--nocapture"])
             .env("SG_ENVIRONMENT_TEST_CHILD", "1")
             .env("SG_PARENT_ONLY", "parent-snapshot-secret")
             .status()
@@ -212,152 +207,6 @@ fn service_environment_protocols_and_stdio_export() {
     assert_eq!(report(&shell)["marker"], "one");
     manager.stop(&shell);
     println!("PASS full command uses the same effective environment");
-    let gui = std::env::var_os("SG_ENVIRONMENT_GUI")
-        .filter(|s| !s.is_empty())
-        .map(PathBuf::from)
-        .unwrap_or_else(|| env!("CARGO_BIN_EXE_SuperGatewayGUI").into());
-    let export = gateway::stdio::export(&root, &p, &engine, &gui).unwrap();
-    let document: Value = serde_json::from_str(&export).unwrap();
-    let entry = &document["mcpServers"][&p.name];
-    let args: Vec<String> = serde_json::from_value(entry["args"].clone()).unwrap();
-    let encrypted = fs::read(&args[1]).unwrap();
-    assert!(!String::from_utf8_lossy(&encrypted).contains("service-overrides-parent"));
-    let record = args[1].clone();
-    let mut process = Command::new(entry["command"].as_str().unwrap())
-        .args(args)
-        .env("SG_CLIENT_ONLY", "must-not-leak")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut input = process.stdin.take().unwrap();
-    let mut output = BufReader::new(process.stdout.take().unwrap());
-    for (id, method) in [(1, "initialize"), (2, "tools/list")] {
-        writeln!(
-            input,
-            "{}",
-            json!({"jsonrpc":"2.0","id":id,"method":method,"params":{}})
-        )
-        .unwrap();
-        input.flush().unwrap();
-        let mut line = String::new();
-        output.read_line(&mut line).unwrap();
-        let reply: Value = serde_json::from_str(&line).unwrap();
-        if id == 2 {
-            let result: Value =
-                serde_json::from_str(reply["result"]["tools"][0]["description"].as_str().unwrap())
-                    .unwrap();
-            assert_eq!(result["marker"], "one");
-            assert!(result["client"].is_null());
-            assert_eq!(result["empty"], "");
-            assert!(
-                result["blender"]
-                    .as_str()
-                    .unwrap()
-                    .contains("Blender 4.5.0")
-            );
-        }
-    }
-    drop(input);
-    assert!(process.wait().unwrap().success());
-    println!(
-        "PASS exported GUI stdio launcher initializes MCP and blocks client environment contamination"
-    );
-    let mut again = Command::new(&gui)
-        .args(["--stdio-launch", &record])
-        .env("PATH", "")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    writeln!(
-        again.stdin.as_mut().unwrap(),
-        "{}",
-        json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}})
-    )
-    .unwrap();
-    again.stdin.take();
-    let response = again.wait_with_output().unwrap();
-    assert!(response.status.success());
-    assert!(String::from_utf8_lossy(&response.stdout).contains("gui-fixture"));
-    assert!(Path::new(&record).is_file());
-    fs::write(&record, "corrupt protected record").unwrap();
-    let rejected = Command::new(&gui)
-        .args(["--stdio-launch", &record])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .unwrap();
-    assert!(!rejected.status.success() && rejected.stdout.is_empty());
-    println!(
-        "PASS exported environment record is reusable with empty client PATH and corrupt records are rejected"
-    );
-    let remote = Profile {
-        source: "http".into(),
-        url: second.address(false),
-        command: String::new(),
-        args: vec![],
-        ..p.clone()
-    };
-    let document: Value =
-        serde_json::from_str(&gateway::stdio::export(&root, &remote, &engine, &gui).unwrap())
-            .unwrap();
-    let entry = &document["mcpServers"][&remote.name];
-    let args: Vec<String> = serde_json::from_value(entry["args"].clone()).unwrap();
-    let mut bridge = Command::new(&gui)
-        .args(args)
-        .env("PATH", "")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut input = bridge.stdin.take().unwrap();
-    let mut output = BufReader::new(bridge.stdout.take().unwrap());
-    for (id, method) in [(1, "initialize"), (2, "tools/list")] {
-        let params = if id == 1 {
-            json!({"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"env-test","version":"1"}})
-        } else {
-            json!({})
-        };
-        writeln!(
-            input,
-            "{}",
-            json!({"jsonrpc":"2.0","id":id,"method":method,"params":params})
-        )
-        .unwrap();
-        input.flush().unwrap();
-        let mut line = String::new();
-        output.read_line(&mut line).unwrap();
-        let reply: Value = serde_json::from_str(&line).unwrap();
-        if id == 2 {
-            let report: Value =
-                serde_json::from_str(reply["result"]["tools"][0]["description"].as_str().unwrap())
-                    .unwrap();
-            assert_eq!(report["marker"], "two");
-        }
-    }
-    drop(input);
-    let status = bridge.wait().unwrap();
-    let mut errors = String::new();
-    std::io::Read::read_to_string(&mut bridge.stderr.take().unwrap(), &mut errors).unwrap();
-    // Fixed upstream Windows binary can assert in libuv after a successful
-    // remote session closes stdin. Preserve its nonzero exit; only recognize
-    // this specific, post-EOF upstream defect rather than masking other errors.
-    assert!(
-        status.success()
-            || errors.contains("stdin closed. Exiting...")
-                && errors.contains("Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)"),
-        "remote bridge exit {status}: {errors}"
-    );
-    if !status.success() {
-        println!(
-            "KNOWN upstream Windows libuv assertion on remote bridge stdin EOF; exit preserved"
-        );
-    }
-    println!("PASS remote HTTP to stdio export uses the same GUI launcher with empty client PATH");
     let missing = p.clone();
     let mut no_runtime = missing;
     no_runtime.managed = true;

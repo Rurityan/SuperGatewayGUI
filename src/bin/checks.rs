@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
     fs,
-    io::{BufRead, BufReader, Write},
+    io::BufReader,
     path::PathBuf,
     sync::mpsc,
     thread,
@@ -258,44 +258,6 @@ fn run() -> Result<()> {
             &format!("remote {source} upstream authentication refusal"),
         )?;
         manager.stop(&bad_upstream);
-        let exported: Value =
-            serde_json::from_str(&config::client_export(&bridge, &engine)?).unwrap();
-        let entry = &exported["mcpServers"][&bridge.name];
-        let args = entry["args"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|v| v.as_str().unwrap().to_string())
-            .collect::<Vec<_>>();
-        let mut child = Child::spawn(&engine, &args, &BTreeMap::new(), &root)?;
-        let mut input = child.input.take().unwrap();
-        writeln!(input,"{}",json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1"}}})).unwrap();
-        input.flush().unwrap();
-        let output = child.output.take().unwrap();
-        let errors = child.errors.take().unwrap();
-        let err = thread::spawn(move || {
-            use std::io::Read;
-            let mut text = String::new();
-            let _ = BufReader::new(errors).read_to_string(&mut text);
-            text
-        });
-        let (tx, rx) = mpsc::channel();
-        thread::spawn(move || {
-            let mut line = String::new();
-            let _ = BufReader::new(output).read_line(&mut line);
-            let _ = tx.send(line);
-        });
-        check(
-            rx.recv_timeout(Duration::from_secs(15))
-                .map_err(|e| e.to_string())?
-                .contains("serverInfo"),
-            &format!("{source} stdio export initializes"),
-        )?;
-        drop(input);
-        if !child.wait(8000) {
-            child.terminate();
-        }
-        let _ = err.join();
         manager.stop(&upstream);
     }
     let mut crash = make(&mut profiles, "streamableHttp")?;

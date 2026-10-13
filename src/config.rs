@@ -98,6 +98,7 @@ pub fn expand(value: &str) -> Result<String> {
     Ok(result)
 }
 pub fn validate(p: &Profile, launch: bool) -> Result<()> {
+    crate::client::validate(&p.client)?;
     if p.name.trim().is_empty() {
         return Err("请输入服务名称".into());
     }
@@ -341,53 +342,13 @@ pub fn build(p: &Profile, runtime: bool) -> Result<(String, BTreeMap<String, Str
     }
     Ok((serde_json::to_string_pretty(&json!({"port":p.port,"host":p.listen_host(),"logLevel":p.log_level,"logFormat":"json","healthEndpoint":["/_gateway_health"],"mcpServers":{"service":entry}})).map_err(|e| e.to_string())?, secrets))
 }
-pub fn client_export(p: &Profile, engine: &Path) -> Result<String> {
-    if p.source == "local" {
-        return Err("本地 MCP 已支持 stdio。此导出用于远程服务，网络服务请复制地址。".into());
-    }
-    let mut args = vec![
-        if p.source == "sse" {
-            "--sse"
-        } else {
-            "--streamableHttp"
-        }
-        .to_string(),
-        expand(&p.url)?,
-        "--outputTransport".into(),
-        "stdio".into(),
-    ];
-    if !p.bearer.is_empty() {
-        args.extend(["--oauth2Bearer".into(), expand(&p.bearer)?]);
-    }
-    for pair in &p.headers {
-        args.extend([
-            "--header".into(),
-            format!("{}: {}", pair.key, expand(&pair.value)?),
-        ]);
-    }
-    Ok(serde_json::to_string_pretty(&json!({"mcpServers":{&p.name:{"command":std::path::absolute(engine).map_err(|e| e.to_string())?,"args":args}}})).unwrap())
-}
 pub fn codex_export(p: &Profile, engine: &Path) -> Result<String> {
     codex_export_with_ca(p, engine, None)
 }
-pub fn codex_export_with_ca(p: &Profile, engine: &Path, ca: Option<&Path>) -> Result<String> {
+pub fn codex_export_with_ca(p: &Profile, _engine: &Path, _ca: Option<&Path>) -> Result<String> {
+    crate::client::validate(&p.client)?;
     let quoted = |value: &str| serde_json::to_string(value).unwrap();
-    let slug: String = p
-        .name
-        .chars()
-        .filter(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
-        .take(40)
-        .collect();
-    let suffix: String =
-        p.id.chars()
-            .filter(|c| c.is_ascii_alphanumeric())
-            .take(12)
-            .collect();
-    let name = format!(
-        "sg_{}_{}",
-        if slug.is_empty() { "service" } else { &slug },
-        suffix
-    );
+    let name = crate::client::table_name(p);
     let key = if p.api_key.is_empty() {
         p.api_keys
             .iter()
@@ -408,22 +369,11 @@ pub fn codex_export_with_ca(p: &Profile, engine: &Path, ca: Option<&Path>) -> Re
             text.push_str(&format!("url = {}\r\n", quoted(&p.address(false))));
             if !key.is_empty() { text.push_str(&format!("http_headers = {{ \"X-API-Key\" = {} }}\r\n", quoted(&key))); }
         }
-        "sse" => {
-            let command = std::path::absolute(engine).map_err(|e| e.to_string())?;
-            let mut args = vec!["--sse".to_string(), p.address(false), "--outputTransport".into(), "stdio".into()];
-            if !key.is_empty() { args.extend(["--header".into(), format!("X-API-Key: {key}")]); }
-            text.push_str("# SSE 经包内网关转换为 stdio；移动便携目录后请重新复制。\r\n");
-            text.push_str(&format!("command = {}\r\nargs = [{}]\r\n", quoted(&command.to_string_lossy()), args.iter().map(|arg| quoted(arg)).collect::<Vec<_>>().join(", ")));
-            if p.tls {
-                let ca = ca.ok_or("HTTPS SSE 导出需要本地 CA 路径，请先生成证书并从 GUI 复制配置")?;
-                if !ca.is_file() { return Err("请先生成本地 CA，再复制 HTTPS SSE 配置".into()); }
-                let ca = std::path::absolute(ca).map_err(|e| e.to_string())?;
-                text.push_str(&format!("env = {{ NODE_EXTRA_CA_CERTS = {} }}\r\n", quoted(&ca.to_string_lossy())));
-            }
-        }
-        "ws" => return Err("Codex 的 MCP 配置不支持直接连接 WebSocket。请选择 Streamable HTTP 或 SSE 输出，保存配置；运行中请应用并重启。".into()),
+        "sse" => return Err("此客户端导出仅支持 Streamable HTTP；请切换输出协议，保存并在运行中应用重启。不生成 stdio 桥接配置。".into()),
+        "ws" => return Err("Codex 的 MCP 配置不支持直接连接 WebSocket。请选择 Streamable HTTP 输出，保存配置；运行中请应用并重启。".into()),
         _ => return Err("无法导出此输出协议的 Codex 配置".into()),
     }
+    crate::client::append_codex_options(&mut text, p)?;
     Ok(text)
 }
 pub struct Import {
@@ -558,9 +508,7 @@ pub fn import(text: &str, existing: &[Profile]) -> Result<Import> {
             .into();
             if p.output == "stdio" {
                 p.output = "streamableHttp".into();
-                messages.push(format!(
-                    "{name}：stdio 输出转为 GUI 管理的 HTTP，可另行导出 stdio 配置"
-                ));
+                messages.push(format!("{name}：stdio 输出转为 GUI 管理的 HTTP 网络输出"));
             }
             if let Some(v) = get("args") {
                 p.args = strings(v)?;

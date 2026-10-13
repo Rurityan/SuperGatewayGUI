@@ -7,6 +7,31 @@ pub struct Pair {
     pub key: String,
     pub value: String,
 }
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct ClientVariable {
+    pub key: String,
+    pub value: String,
+    pub enabled: bool,
+}
+impl Default for ClientVariable {
+    fn default() -> Self {
+        Self {
+            key: String::new(),
+            value: String::new(),
+            enabled: true,
+        }
+    }
+}
+#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase", default)]
+pub struct ClientOptions {
+    // Retained only to read and preserve previous settings; network exports ignore it.
+    pub environment: Vec<ClientVariable>,
+    pub startup_timeout_sec: Option<u32>,
+    pub tool_timeout_sec: Option<u32>,
+    pub stdio: bool, // Deprecated: the GUI only exports connections to its gateway.
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "PascalCase", default)]
@@ -47,6 +72,7 @@ pub struct Profile {
     #[serde(skip)]
     pub managed_runtime: bool,
     pub dependency: crate::dependencies::ServiceDependency,
+    pub client: ClientOptions,
 }
 impl Default for Profile {
     fn default() -> Self {
@@ -83,10 +109,18 @@ impl Default for Profile {
             managed: false,
             managed_runtime: false,
             dependency: Default::default(),
+            client: Default::default(),
         }
     }
 }
 impl Profile {
+    pub fn gateway_eq(&self, other: &Self) -> bool {
+        let mut a = self.clone();
+        let mut b = other.clone();
+        a.client = Default::default();
+        b.client = Default::default();
+        a == b
+    }
     pub fn listen_host(&self) -> &str {
         self.listen_address
             .as_deref()
@@ -116,6 +150,7 @@ impl Profile {
             .map(|p| p.value.clone())
             .chain(self.api_keys.clone())
             .chain([self.bearer.clone(), self.api_key.clone()])
+            .chain(self.client.environment.iter().map(|v| v.value.clone()))
             .filter(|s| !s.is_empty())
             .collect()
     }
