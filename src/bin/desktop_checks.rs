@@ -13,6 +13,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+use windows_sys::Win32::UI::Shell::{NIM_DELETE, NIM_MODIFY, NOTIFYICONDATAW, Shell_NotifyIconW};
 use windows_sys::Win32::UI::{
     Controls::*, HiDpi::*, Input::KeyboardAndMouse::IsWindowEnabled, Shell::ExtractIconExW,
     WindowsAndMessaging::*,
@@ -377,6 +378,7 @@ fn run() -> Result<()> {
         .args(["--data-dir", store.root.to_str().unwrap()])
         .env("PATH", "")
         .env("DOTNET_ROOT", "X:\\not-installed")
+        .arg("--background")
         .spawn()
         .map_err(|e| e.to_string())?;
     let result = unsafe { ui(&store, child.id()) };
@@ -646,6 +648,19 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
         !h.is_null()
     })?;
     let dpi = GetDpiForWindow(h);
+    wait(|| !GetDlgItem(GetDlgItem(h, 22), 100).is_null())?;
+    thread::sleep(Duration::from_millis(150));
+    check(
+        IsWindowVisible(h) == 0,
+        "background launch starts hidden with usable tray",
+    )?;
+    let activate = RegisterWindowMessageW(wide("SuperGatewayGUI.Restore.v1").as_ptr());
+    SendMessageW(h, activate, 0, 0);
+    wait(|| IsWindowVisible(h) != 0)?;
+    check(
+        true,
+        "registered activation restores actual background launch",
+    )?;
     let large = SendMessageW(h, WM_GETICON, ICON_BIG as usize, 0) as HICON;
     let small = SendMessageW(h, WM_GETICON, ICON_SMALL as usize, 0) as HICON;
     check(
@@ -1333,6 +1348,56 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
     PostMessageW(h, WM_CLOSE, 0, 0);
     thread::sleep(Duration::from_millis(150));
     check(IsWindowVisible(h) == 0, "close minimizes to tray")?;
+    let executable = std::env::args().nth(3).ok_or("GUI executable missing")?;
+    let run_second = |background: bool| -> Result<()> {
+        let mut command = Command::new(&executable);
+        command.arg("--data-dir").arg(&store.root).env("PATH", "");
+        if background {
+            command.arg("--background");
+        }
+        let mut second = command.spawn().map_err(|e| e.to_string())?;
+        let mut status = None;
+        let result = wait(|| {
+            status = second.try_wait().ok().flatten();
+            status.is_some()
+        });
+        if result.is_err() {
+            let _ = second.kill();
+            let _ = second.wait();
+        }
+        result?;
+        if !status.unwrap().success() {
+            return Err("Duplicate instance activation failed".into());
+        }
+        Ok(())
+    };
+    run_second(true)?;
+    check(
+        IsWindowVisible(h) == 0,
+        "duplicate background startup leaves existing GUI hidden",
+    )?;
+    run_second(false)?;
+    wait(|| IsWindowVisible(h) != 0)?;
+    check(
+        true,
+        "reopening executable restores existing hidden GUI without second instance",
+    )?;
+    let mut tray: NOTIFYICONDATAW = std::mem::zeroed();
+    tray.cbSize = std::mem::size_of::<NOTIFYICONDATAW>() as u32;
+    tray.hWnd = h;
+    tray.uID = 1;
+    check(
+        Shell_NotifyIconW(NIM_DELETE, &tray) != 0,
+        "remove only test instance tray icon",
+    )?;
+    let taskbar_created = RegisterWindowMessageW(wide("TaskbarCreated").as_ptr());
+    SendMessageW(h, taskbar_created, 0, 0);
+    check(
+        Shell_NotifyIconW(NIM_MODIFY, &tray) != 0,
+        "TaskbarCreated re-registers test tray icon",
+    )?;
+    PostMessageW(h, WM_CLOSE, 0, 0);
+    wait(|| IsWindowVisible(h) == 0)?;
     PostMessageW(h, WM_APP + 1, 0, WM_LBUTTONDBLCLK as isize);
     thread::sleep(Duration::from_millis(150));
     check(IsWindowVisible(h) != 0, "tray double click restores window")?;

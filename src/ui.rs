@@ -150,6 +150,10 @@ struct App {
     busy: bool,
     loading: bool,
     exiting: bool,
+    activate_message: u32,
+    taskbar_message: u32,
+    instance_property: Vec<u16>,
+    tray_ready: bool,
 }
 pub fn run() -> Result<()> {
     // Freeze the interpreter choice before creating the UI or starting services.
@@ -165,27 +169,56 @@ pub fn run() -> Result<()> {
         .map(|v| PathBuf::from(&v[1]));
     let root = gateway::storage::configuration_directory(&default_root(), explicit.as_deref())?;
     gateway::storage::dependency_directory(&root)?;
-    let store = Store::new(root.clone())?;
-    let settings = store.load()?;
     use std::hash::{Hash, Hasher};
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    root.hash(&mut hasher);
-    let name = if args.iter().any(|v| v == "--data-dir") {
-        format!("Local\\SuperGatewayGUI-Rust-{:x}", hasher.finish())
-    } else {
-        format!(
-            "Local\\SuperGatewayGUI-{}",
-            std::env::var("USERNAME").unwrap_or_default()
-        )
-    };
+    root.to_string_lossy()
+        .replace('/', "\\")
+        .trim_end_matches('\\')
+        .to_uppercase()
+        .hash(&mut hasher);
+    gateway::startup::user_sid()?.hash(&mut hasher);
+    let identity = format!("SuperGatewayGUI-Rust-{:x}", hasher.finish());
+    let instance_property = wide(&identity);
+    let activate_message =
+        unsafe { RegisterWindowMessageW(wide("SuperGatewayGUI.Restore.v1").as_ptr()) };
+    let taskbar_message = unsafe { RegisterWindowMessageW(wide("TaskbarCreated").as_ptr()) };
+    if activate_message == 0 || taskbar_message == 0 {
+        return Err(native::error("注册窗口恢复消息"));
+    }
+    // Restore before opening the mutex: a normal token can be denied access
+    // to a mutex created by the same user's elevated instance.
+    if unsafe {
+        activate_existing(
+            &instance_property,
+            activate_message,
+            !args.iter().any(|v| v == "--background"),
+        )?
+    } {
+        return Ok(());
+    }
+    let name = format!("Local\\{identity}");
     let mutex = unsafe { CreateMutexW(null(), 0, wide(name.replace(['/', ':'], "_")).as_ptr()) };
     if mutex.is_null() {
         return Err(native::error("创建应用互斥锁"));
     }
     let _mutex = native::Handle(mutex);
     if unsafe { GetLastError() } == ERROR_ALREADY_EXISTS {
-        return Err("程序已经运行，请从系统托盘打开".into());
+        for _ in 0..40 {
+            if unsafe {
+                activate_existing(
+                    &instance_property,
+                    activate_message,
+                    !args.iter().any(|v| v == "--background"),
+                )?
+            } {
+                return Ok(());
+            }
+            thread::sleep(std::time::Duration::from_millis(50));
+        }
+        return Err("已有实例正在启动或无法响应，请稍后重新打开程序。不要重复启动服务。".into());
     }
+    let store = Store::new(root.clone())?;
+    let settings = store.load()?;
     let (tx, rx) = mpsc::sync_channel(2048);
     let engine = std::env::current_exe()
         .map_err(|e| e.to_string())?
@@ -246,6 +279,10 @@ pub fn run() -> Result<()> {
             busy: false,
             loading: false,
             exiting: false,
+            activate_message,
+            taskbar_message,
+            instance_property,
+            tray_ready: false,
         });
         let hwnd = CreateWindowExW(
             0,
@@ -266,7 +303,7 @@ pub fn run() -> Result<()> {
         }
         ShowWindow(
             hwnd,
-            if args.iter().any(|v| v == "--background") {
+            if args.iter().any(|v| v == "--background") && app.tray_ready {
                 SW_HIDE
             } else {
                 SW_SHOW
@@ -288,14 +325,66 @@ pub fn run() -> Result<()> {
     }
     Ok(())
 }
+unsafe fn activate_existing(property: &[u16], message: u32, restore: bool) -> Result<bool> {
+    let mut window = null_mut();
+    loop {
+        window = FindWindowExW(null_mut(), window, wide("SGRustMain").as_ptr(), null());
+        if window.is_null() {
+            return Ok(false);
+        }
+        if !GetPropW(window, property.as_ptr()).is_null() {
+            if restore {
+                let mut pid = 0;
+                GetWindowThreadProcessId(window, &mut pid);
+                AllowSetForegroundWindow(pid);
+                let mut result = 0;
+                if SendMessageTimeoutW(
+                    window,
+                    message,
+                    0,
+                    0,
+                    SMTO_ABORTIFHUNG | SMTO_BLOCK,
+                    2000,
+                    &mut result,
+                ) == 0
+                {
+                    return Err("已有后台实例无法响应窗口恢复，请稍后重试。".into());
+                }
+            }
+            return Ok(true);
+        }
+    }
+}
 unsafe extern "system" fn main_proc(hwnd: HWND, message: u32, w: WPARAM, l: LPARAM) -> LRESULT {
     if message == WM_NCCREATE {
         let create = &*(l as *const CREATESTRUCTW);
         let app = &mut *(create.lpCreateParams as *mut App);
         app.hwnd = hwnd;
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, create.lpCreateParams as isize);
+        if SetPropW(hwnd, app.instance_property.as_ptr(), 1usize as HANDLE) == 0
+            || ChangeWindowMessageFilterEx(hwnd, app.activate_message, MSGFLT_ALLOW, null_mut())
+                == 0
+            || ChangeWindowMessageFilterEx(hwnd, app.taskbar_message, MSGFLT_ALLOW, null_mut()) == 0
+            || ChangeWindowMessageFilterEx(hwnd, WM_TRAY, MSGFLT_ALLOW, null_mut()) == 0
+        {
+            return 0;
+        }
         return DefWindowProcW(hwnd, message, w, l);
     }
+    let pointer = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut App;
+    if !pointer.is_null() && message == (*pointer).activate_message {
+        // No configuration or process mutation is exposed across integrity levels.
+        let enabled = GetLastActivePopup(hwnd);
+        ShowWindow(hwnd, SW_SHOW);
+        ShowWindow(hwnd, SW_RESTORE);
+        SetForegroundWindow(if IsWindowEnabled(hwnd) == 0 && !enabled.is_null() {
+            enabled
+        } else {
+            hwnd
+        });
+        return 1;
+    }
+    let taskbar_recreated = !pointer.is_null() && message == (*pointer).taskbar_message;
     // Native APIs and modal dialogs dispatch messages synchronously. Handle
     // these messages without borrowing App, and suppress nested App dispatch.
     match message {
@@ -307,7 +396,13 @@ unsafe extern "system" fn main_proc(hwnd: HWND, message: u32, w: WPARAM, l: LPAR
             return 0;
         }
         WM_CLOSE => {
-            ShowWindow(hwnd, SW_HIDE);
+            let pointer = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut App;
+            if !pointer.is_null() {
+                (*pointer).tray_ready = (*pointer).tray(NIM_MODIFY) || (*pointer).tray(NIM_ADD);
+                if (*pointer).tray_ready {
+                    ShowWindow(hwnd, SW_HIDE);
+                }
+            }
             return 0;
         }
         WM_QUERYENDSESSION => return 1,
@@ -324,6 +419,7 @@ unsafe extern "system" fn main_proc(hwnd: HWND, message: u32, w: WPARAM, l: LPAR
         }
         WM_CREATE | WM_SIZE | WM_DPICHANGED | WM_COMMAND | WM_NOTIFY | WM_SCROLL_FORM
         | WM_TIMER | WM_TRAY | WM_EXIT_READY => {}
+        _ if taskbar_recreated => {}
         _ => return DefWindowProcW(hwnd, message, w, l),
     }
     thread_local! {static DISPATCHING:std::cell::Cell<bool>=const {std::cell::Cell::new(false)};}
@@ -342,13 +438,20 @@ unsafe extern "system" fn main_proc(hwnd: HWND, message: u32, w: WPARAM, l: LPAR
         return DefWindowProcW(hwnd, message, w, l);
     }
     let app = &mut *data;
+    if taskbar_recreated {
+        app.tray_ready = app.tray(NIM_ADD);
+        if !app.tray_ready {
+            app.restore();
+        }
+        return 0;
+    }
     match message {
         WM_CREATE => {
             app.dpi = GetDpiForWindow(hwnd);
             app.update_icons();
             app.create();
             app.layout();
-            app.tray(NIM_ADD);
+            app.tray_ready = app.tray(NIM_ADD);
             SetTimer(hwnd, 1, 100, None);
             app.refresh_list();
             if !app.settings.services.is_empty() {
@@ -2310,7 +2413,7 @@ impl App {
         }
         Ok(())
     }
-    unsafe fn tray(&self, operation: u32) {
+    unsafe fn tray(&self, operation: u32) -> bool {
         let mut data: NOTIFYICONDATAW = zeroed();
         data.cbSize = size_of::<NOTIFYICONDATAW>() as u32;
         data.hWnd = self.hwnd;
@@ -2324,7 +2427,7 @@ impl App {
             .unwrap_or_else(|| LoadIconW(GetModuleHandleW(null()), ICON_RESOURCE));
         let tip = wide("SuperGateway Rust · 双击打开");
         data.szTip[..tip.len()].copy_from_slice(&tip);
-        Shell_NotifyIconW(operation, &data);
+        Shell_NotifyIconW(operation, &data) != 0
     }
     unsafe fn restore(&self) {
         ShowWindow(self.hwnd, SW_SHOW);

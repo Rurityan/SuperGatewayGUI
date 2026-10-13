@@ -1,14 +1,18 @@
 # Rust Win32 迁移验证
 
-## 当前开发状态（2026-10-12）
+## 当前开发状态（2026-10-13）
 
 本文件后续章节保留各阶段验收及占用历史。当前实现、首次构建和发布流程见 [开发说明](DEVELOPMENT.md)，最近修改见 [变更记录](CHANGELOG.md)。
+
+后台 GUI 恢复修复：2026-10-13 完整格式 / Clippy / Cargo 回归通过，含 70 项核心检查和 82 项 UI 检查。UI 使用实际 `--background` 启动，验证注册消息恢复、再次打开 EXE 唤醒原实例、重复后台启动不弹窗及托盘图标丢失后的 `TaskbarCreated` 重注册。只删除测试实例图标，不重启资源管理器，不修改用户计划任务或结束个人服务。日志见 `verification/environment-startup-recovery-*.txt`。管理员跨完整性级别已实现消息过滤兼容，但真实 UAC / 计划任务重新登录验收尚未执行；非交互桌面任务不能显示 GUI，必须使用 `InteractiveToken`。
+
+最终便携 EXE 再次通过 82 项 UI 检查，以及中文 / 带空格目录、空 PATH 下两次自动启动、MCP 初始化及正常进程树清理。GUI 为 2289152 字节（2.18 MiB）；引擎校验值未变更。源码包附最终日志；ZIP 大小和 SHA256 见交付清单。
 
 一次性终端输出修复：旧版实际 mcp-for-blender 2.1.9 的 `--help` 输出不可见，修复版可在终端缓冲区读取帮助文本和退出码 0。受控 Python 程序的 stdout、stderr、交互提示和输入完成验证。该检查不执行真实插件安装，原始记录见源码包 `verification/oneshot-*-output-*.txt`。
 
 - 滚轮修复：全目标 Clippy、Release 构建和 76 项原生 UI 检查通过。下拉框收起及展开时滚轮均不改选；包内 EXE 与测试 EXE 校验值一致。UI 计数包含逐网卡检查，其他机器数量可能不同。
 - 紧邻的环境功能完整回归：格式 / Clippy / Cargo 测试通过，包括 70 项核心检查、74 项当时 UI 检查、环境与 stdio 导出、依赖、配置路径、一次性向导和 TLS；另有实际托管 Node / Python MCP 离线检查、6 项受控终端检查、空 PATH / 中文带空格便携目录两次启动。滚轮补丁后未重复整套核心及 TLS 回归。
-- 当前 GUI EXE 为 2288128 字节（2.18 MiB，含一次性终端输出修复），引擎为 96560640 字节。最终附件以随包 `.sha256` 和本地 `artifacts/dependency-delivery.json` 为准，这些生成文件不纳入源码仓库。
+- 最近已交付 GUI EXE 为 2288128 字节（2.18 MiB，含一次性终端输出修复），引擎为 96560640 字节。后台恢复版最终体积与校验值以随包 `.sha256` 和本地 `artifacts/dependency-delivery.json` 为准，这些生成文件不纳入源码仓库。
 - 尚未完成干净 Windows 10/11 虚拟机验收、真实 Blender setup、多显示器人工 DPI 检查或新内存 / 冷启动测量。旧占用结果保持为历史基线。
 - 上游远程 HTTP → stdio 的 stdin EOF libuv 断言保留真实退出码；详见 [环境验收限制](ENVIRONMENT_VALIDATION.md#限制)。原始日志在本地 `artifacts` 或源码发布包 `verification`，不要求随 Git 源码提交。
 

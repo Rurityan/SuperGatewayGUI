@@ -41,7 +41,7 @@ pub fn is_elevated() -> bool {
             && elevation.TokenIsElevated != 0
     }
 }
-pub(crate) fn user_sid() -> Result<String> {
+pub fn user_sid() -> Result<String> {
     let token = token()?;
     unsafe {
         let mut length = 0;
