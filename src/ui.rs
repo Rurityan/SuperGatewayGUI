@@ -148,7 +148,9 @@ struct App {
     manager: Arc<Manager>,
     rx: mpsc::Receiver<Event>,
     states: HashMap<String, (String, String, bool)>,
-    logs: VecDeque<String>,
+    logs: gateway::logs::Logs,
+    log_filter: Option<String>,
+    log_choices: Vec<(String, String)>,
     busy: bool,
     loading: bool,
     exiting: bool,
@@ -234,7 +236,7 @@ pub fn run() -> Result<()> {
         CoInitializeEx(null(), COINIT_APARTMENTTHREADED as u32);
         let init = INITCOMMONCONTROLSEX {
             dwSize: size_of::<INITCOMMONCONTROLSEX>() as u32,
-            dwICC: ICC_TAB_CLASSES | ICC_STANDARD_CLASSES,
+            dwICC: ICC_TAB_CLASSES | ICC_STANDARD_CLASSES | ICC_LISTVIEW_CLASSES,
         };
         InitCommonControlsEx(&init);
         let classes: [(&str, WNDPROC); 3] = [
@@ -277,7 +279,9 @@ pub fn run() -> Result<()> {
             manager,
             rx,
             states: HashMap::new(),
-            logs: VecDeque::new(),
+            logs: Default::default(),
+            log_filter: None,
+            log_choices: Vec::new(),
             busy: false,
             loading: false,
             exiting: false,
@@ -839,6 +843,7 @@ impl App {
             (16, "设置"),
             (17, "退出"),
             (18, "帮助"),
+            (19, "导出配置"),
         ] {
             self.add(
                 self.hwnd,
@@ -1247,7 +1252,15 @@ impl App {
                 | WS_HSCROLL,
         );
         SendMessageW(self.ctrl(40), EM_SETLIMITTEXT, 256 * 1024, 0);
-        self.add(self.hwnd, 41, "BUTTON", "清空日志", WS_TABSTOP);
+        self.add(self.hwnd, 41, "BUTTON", "清空当前日志", WS_TABSTOP);
+        self.add(self.hwnd, 43, "STATIC", "日志筛选", 0);
+        self.add(
+            self.hwnd,
+            42,
+            "COMBOBOX",
+            "",
+            CBS_DROPDOWNLIST as u32 | WS_TABSTOP | WS_VSCROLL,
+        );
         for id in [TAB, PANEL, 30, 31, 32, 33, 34, 35, 36, 38, 39] {
             EnableWindow(self.ctrl(id), 0);
         }
@@ -1276,8 +1289,9 @@ impl App {
         for (i, id) in [12, 13, 14, 15, 16, 18, 17].iter().enumerate() {
             self.move_control(*id, width - 634 + i as i32 * 88, 24, 82, 32);
         }
-        self.move_control(10, 20, 90, 104, 32);
-        self.move_control(11, 134, 90, 104, 32);
+        self.move_control(10, 20, 90, 70, 32);
+        self.move_control(11, 96, 90, 62, 32);
+        self.move_control(19, 164, 90, 86, 32);
         self.move_control(LIST, 20, 132, 230, (height - 316).max(60));
         self.move_control(4, 274, 86, width - 294, 24);
         self.move_control(5, 274, 114, width - 294, 28);
@@ -1288,18 +1302,11 @@ impl App {
         for (i, id) in [30, 31, 32, 33, 34].iter().enumerate() {
             self.move_control(*id, 274 + i as i32 * 113, action_y, 106, 32);
         }
-        let export_width = (width - 294) / 4;
-        for (i, id) in [35].iter().enumerate() {
-            self.move_control(
-                *id,
-                274 + i as i32 * export_width,
-                action_y + 40,
-                export_width - 8,
-                32,
-            );
-        }
+        self.move_control(35, width - 238, height - 185, 218, 30);
         self.move_control(40, 20, height - 145, width - 40, 125);
-        self.move_control(41, 20, height - 185, 108, 30);
+        self.move_control(41, 20, height - 185, 132, 30);
+        self.move_control(43, 166, height - 179, 70, 24);
+        self.move_control(42, 240, height - 185, (width - 498).clamp(100, 400), 230);
         let panel_width = width - 314;
         let source = self.combo_index(SOURCE);
         let original = self.combo_index(MANAGED) != 1 || !self.text(STDIO).trim().is_empty();
@@ -1458,7 +1465,7 @@ impl App {
             flags,
         )
     }
-    unsafe fn refresh_list(&self) {
+    unsafe fn refresh_list(&mut self) {
         SendMessageW(self.ctrl(LIST), LB_RESETCONTENT, 0, 0);
         for p in &self.settings.services {
             let mut status = self
@@ -1479,6 +1486,42 @@ impl App {
         if let Some(i) = self.selected {
             SendMessageW(self.ctrl(LIST), LB_SETCURSEL, i, 0);
         }
+        self.refresh_log_filter();
+    }
+    unsafe fn refresh_log_filter(&mut self) {
+        let choices: Vec<_> = self
+            .settings
+            .services
+            .iter()
+            .map(|p| (p.id.clone(), p.name.clone()))
+            .collect();
+        if choices != self.log_choices || SendMessageW(self.ctrl(42), CB_GETCOUNT, 0, 0) == 0 {
+            self.log_choices = choices;
+            let selected = self
+                .log_filter
+                .as_ref()
+                .and_then(|id| self.log_choices.iter().position(|(key, _)| key == id));
+            if selected.is_none() {
+                self.log_filter = None;
+            }
+            SendMessageW(self.ctrl(42), CB_RESETCONTENT, 0, 0);
+            SendMessageW(
+                self.ctrl(42),
+                CB_ADDSTRING,
+                0,
+                wide("全部服务").as_ptr() as isize,
+            );
+            for (_, name) in &self.log_choices {
+                SendMessageW(self.ctrl(42), CB_ADDSTRING, 0, wide(name).as_ptr() as isize);
+            }
+            self.combo_set(42, selected.map_or(0, |i| i as i32 + 1));
+            self.render_logs();
+        }
+    }
+    unsafe fn render_logs(&self) {
+        self.set(40, &self.logs.text(self.log_filter.as_deref()));
+        SendMessageW(self.ctrl(40), EM_SETSEL, usize::MAX, -1);
+        SendMessageW(self.ctrl(40), EM_SCROLLCARET, 0, 0);
     }
     unsafe fn select(&mut self, index: usize) {
         self.loading = true;
@@ -1892,7 +1935,7 @@ impl App {
     }
     unsafe fn set_busy(&mut self, busy: bool) {
         self.busy = busy;
-        for id in [10, 11, 12, 13, 14, 15, 16, 30, 31, 32, 33, 34] {
+        for id in [10, 11, 12, 13, 14, 15, 16, 19, 30, 31, 32, 33, 34] {
             EnableWindow(
                 self.ctrl(id),
                 if !busy && (id < 30 || self.selected.is_some()) {
@@ -1969,12 +2012,7 @@ impl App {
                         .find(|p| p.id == id)
                         .map(|p| p.name.as_str())
                         .unwrap_or("网关");
-                    self.logs.push_back(format!("[{name}] {line}"));
-                    while self.logs.len() > 1000
-                        || self.logs.iter().map(String::len).sum::<usize>() > 128 * 1024
-                    {
-                        self.logs.pop_front();
-                    }
+                    self.logs.push(id, format!("[{name}] {line}"));
                     logs_changed = true;
                 }
                 Event::State(id, status, detail) => {
@@ -2013,7 +2051,10 @@ impl App {
                         self.message(&e, MB_ICONWARNING);
                     }
                 }
-                Event::SettingsSaved(settings) => self.settings = settings,
+                Event::SettingsSaved(settings) => {
+                    self.settings = settings;
+                    self.refresh_log_filter();
+                }
                 Event::StorageChanged(root) => {
                     let result = std::env::current_exe().and_then(|exe| {
                         let mut command = std::process::Command::new(exe);
@@ -2044,19 +2085,14 @@ impl App {
             }
         }
         if logs_changed {
-            self.set(
-                40,
-                &self.logs.iter().cloned().collect::<Vec<_>>().join("\r\n"),
-            );
-            SendMessageW(self.ctrl(40), EM_SETSEL, usize::MAX, -1);
-            SendMessageW(self.ctrl(40), EM_SCROLLCARET, 0, 0);
+            self.render_logs();
         }
     }
     unsafe fn command(&mut self, id: i32, code: u32) -> Result<()> {
         if self.loading {
             return Ok(());
         }
-        if self.busy && ![17, 18, 36, 41, LIST, TAB, SOURCE, OUTPUT].contains(&id) {
+        if self.busy && ![17, 18, 36, 41, 42, LIST, TAB, SOURCE, OUTPUT].contains(&id) {
             return Ok(());
         }
         match id {
@@ -2120,6 +2156,9 @@ impl App {
                 }
             }
             12 | 13 => {
+                if !self.unsaved()? {
+                    return Ok(());
+                }
                 let text = if id == 12 {
                     let Some(path) = native::file_dialog(
                         self.hwnd,
@@ -2133,29 +2172,72 @@ impl App {
                 } else {
                     clipboard_read(self.hwnd)?
                 };
-                let result = config::import(&text, &self.settings.services)?;
-                if preview(
+                let result = gateway::exchange::import(&text, &self.settings.services)?;
+                if let Some(indices) = service_selector(
                     self.hwnd,
                     self.font,
                     "导入预览 · 不会自动启动",
+                    &result.profiles,
                     &result.messages.join("\r\n"),
-                    if result.profiles.is_empty() {
-                        None
-                    } else {
-                        Some("保存有效服务")
-                    },
+                    "导入勾选服务",
                 ) {
-                    if !self.unsaved()? {
-                        return Ok(());
-                    }
+                    let old = self.settings.clone();
                     let first = self.settings.services.len();
-                    self.settings.services.extend(result.profiles);
-                    self.persist()?;
+                    self.settings
+                        .services
+                        .extend(indices.iter().map(|i| result.profiles[*i].clone()));
+                    if let Err(e) = self.persist() {
+                        self.settings = old;
+                        return Err(e);
+                    }
                     self.refresh_list();
                     if self.settings.services.len() > first {
                         self.select(first);
                     }
+                    self.message(
+                        &format!(
+                            "已成功导入 {} 个服务。未启动服务或安装依赖。",
+                            indices.len()
+                        ),
+                        MB_OK | MB_ICONINFORMATION,
+                    );
                 }
+            }
+            19 => {
+                if !self.unsaved()? {
+                    return Ok(());
+                }
+                let Some(indices) = service_selector(
+                    self.hwnd,
+                    self.font,
+                    "导出 GUI 服务配置",
+                    &self.settings.services,
+                    "包含基础、高级、环境、请求头、密钥及客户端选项。\r\n不包含已安装的包、证书私钥或应用全局设置。文件中的密钥和变量值为明文，请妥善保管。",
+                    "导出勾选服务",
+                ) else {
+                    return Ok(());
+                };
+                let profiles: Vec<_> = indices
+                    .iter()
+                    .map(|i| self.settings.services[*i].clone())
+                    .collect();
+                if profiles.iter().any(|p| !p.secrets().is_empty()) && self.message("所选服务包含密钥、请求头或环境变量值，将以明文写入可迁移的配置文件。确定导出？", MB_YESNO | MB_ICONWARNING) != IDYES { return Ok(()); }
+                let Some(path) = native::file_dialog(
+                    self.hwnd,
+                    true,
+                    "SuperGatewayGUI 配置|*.json|所有文件|*.*",
+                    "SuperGatewayGUI-services.json",
+                ) else {
+                    return Ok(());
+                };
+                gateway::store::atomic_write(
+                    &path,
+                    gateway::exchange::export(&profiles)?.as_bytes(),
+                )?;
+                self.message(
+                    &format!("已成功导出 {} 个服务。", profiles.len()),
+                    MB_OK | MB_ICONINFORMATION,
+                );
             }
             14 => self.start_many(
                 self.settings
@@ -2503,8 +2585,16 @@ impl App {
                 self.pair_lists();
             }
             41 => {
-                self.logs.clear();
-                self.set(40, "");
+                self.logs.clear(self.log_filter.as_deref());
+                self.render_logs();
+            }
+            42 if code == CBN_SELCHANGE => {
+                self.log_filter = self
+                    .combo_index(42)
+                    .checked_sub(1)
+                    .and_then(|i| self.log_choices.get(i as usize))
+                    .map(|(id, _)| id.clone());
+                self.render_logs();
             }
             _ => {}
         }
@@ -2598,6 +2688,7 @@ struct Modal {
     dependency: Option<Box<dependency_ui::Dialog>>,
     storage: bool,
     one_shot: bool,
+    service_count: Option<usize>,
     dispatching: std::cell::Cell<bool>,
 }
 unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LRESULT {
@@ -2694,6 +2785,28 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                     }
                 }
                 1 => {
+                    if let Some(count) = modal.service_count {
+                        modal.values = (0..count)
+                            .filter(|i| {
+                                SendMessageW(
+                                    GetDlgItem(hwnd, 560),
+                                    LVM_GETITEMSTATE,
+                                    *i,
+                                    LVIS_STATEIMAGEMASK as isize,
+                                ) == (2 << 12)
+                            })
+                            .map(|i| i.to_string())
+                            .collect();
+                        if modal.values.is_empty() {
+                            MessageBoxW(
+                                hwnd,
+                                wide("请至少勾选一个服务").as_ptr(),
+                                wide("选择服务").as_ptr(),
+                                MB_OK | MB_ICONINFORMATION,
+                            );
+                            return 0;
+                        }
+                    }
                     if modal.one_shot {
                         let control = GetDlgItem(hwnd, 500);
                         let mut value = vec![0u16; GetWindowTextLengthW(control) as usize + 1];
@@ -2773,6 +2886,19 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                     modal.result = Some(false);
                     DestroyWindow(hwnd);
                 }
+                id @ (561 | 562) if modal.service_count.is_some() => {
+                    let item = LVITEMW {
+                        stateMask: LVIS_STATEIMAGEMASK,
+                        state: if id == 561 { 2 << 12 } else { 1 << 12 },
+                        ..zeroed()
+                    };
+                    SendMessageW(
+                        GetDlgItem(hwnd, 560),
+                        LVM_SETITEMSTATE,
+                        usize::MAX,
+                        &item as *const _ as isize,
+                    );
+                }
                 506 if modal.setting => {
                     modal.values = vec!["restart".into()];
                     modal.result = Some(true);
@@ -2843,6 +2969,7 @@ unsafe fn modal_window(
         dependency: None,
         storage: false,
         one_shot: false,
+        service_count: None,
         dispatching: std::cell::Cell::new(false),
     });
     let dpi = GetDpiForWindow(owner) as i32;
@@ -3007,6 +3134,129 @@ unsafe fn help_dialog(owner: HWND, font: HFONT) {
     SendMessageW(list, LB_SETCURSEL, 0, 0);
     help_layout(&modal);
     modal_loop(owner, modal.hwnd);
+}
+unsafe fn service_selector(
+    owner: HWND,
+    font: HFONT,
+    title: &str,
+    profiles: &[Profile],
+    notes: &str,
+    accept: &str,
+) -> Option<Vec<usize>> {
+    let mut modal = modal_window(owner, font, title, 860, 590, false, false, false);
+    modal.service_count = Some(profiles.len());
+    modal_control(&modal, 561, "BUTTON", "全选", WS_TABSTOP, 16, 12, 90, 30);
+    modal_control(&modal, 562, "BUTTON", "全不选", WS_TABSTOP, 116, 12, 90, 30);
+    modal_control(
+        &modal,
+        563,
+        "STATIC",
+        "勾选需要的服务（空格键切换）；参数值在预览中隐藏",
+        0,
+        218,
+        18,
+        610,
+        24,
+    );
+    let list = modal_control(
+        &modal,
+        560,
+        "SysListView32",
+        "",
+        WS_TABSTOP | LVS_REPORT | LVS_SHOWSELALWAYS,
+        16,
+        50,
+        814,
+        280,
+    );
+    SendMessageW(
+        list,
+        LVM_SETEXTENDEDLISTVIEWSTYLE,
+        0,
+        (LVS_EX_CHECKBOXES | LVS_EX_FULLROWSELECT | LVS_EX_LABELTIP | LVS_EX_DOUBLEBUFFER) as isize,
+    );
+    let dpi = GetDpiForWindow(modal.hwnd) as i32;
+    for (i, (label, width)) in [("服务名称", 290), ("配置摘要（不显示密钥值）", 650)]
+        .iter()
+        .enumerate()
+    {
+        let mut text = wide(label);
+        let column = LVCOLUMNW {
+            mask: LVCF_TEXT | LVCF_WIDTH,
+            pszText: text.as_mut_ptr(),
+            cx: width * dpi / 96,
+            ..zeroed()
+        };
+        SendMessageW(list, LVM_INSERTCOLUMNW, i, &column as *const _ as isize);
+    }
+    for (i, p) in profiles.iter().enumerate() {
+        let mut name = wide(&p.name);
+        let item = LVITEMW {
+            mask: LVIF_TEXT | LVIF_STATE,
+            iItem: i as i32,
+            pszText: name.as_mut_ptr(),
+            state: 2 << 12,
+            stateMask: LVIS_STATEIMAGEMASK,
+            ..zeroed()
+        };
+        SendMessageW(list, LVM_INSERTITEMW, 0, &item as *const _ as isize);
+        // Checkbox initialization by the control may override insertion state.
+        SendMessageW(list, LVM_SETITEMSTATE, i, &item as *const _ as isize);
+        let source = match p.source.as_str() {
+            "local" => "本地程序",
+            "http" => "远程 HTTP",
+            _ => "远程 SSE",
+        };
+        let mut summary = wide(format!(
+            "{source} → {} · 端口 {} · 环境 {} · PATH {} · 请求头 {} · 密钥 {} · {}",
+            p.output,
+            p.port,
+            p.env.len(),
+            p.additional_paths.len(),
+            p.headers.len(),
+            p.api_keys.len()
+                + usize::from(!p.api_key.is_empty())
+                + usize::from(!p.bearer.is_empty()),
+            if p.managed {
+                "托管依赖"
+            } else {
+                "原有环境"
+            }
+        ));
+        let item = LVITEMW {
+            iSubItem: 1,
+            pszText: summary.as_mut_ptr(),
+            ..zeroed()
+        };
+        SendMessageW(list, LVM_SETITEMTEXTW, i, &item as *const _ as isize);
+    }
+    modal_control(
+        &modal,
+        500,
+        "EDIT",
+        notes,
+        ES_READONLY as u32 | ES_MULTILINE as u32 | WS_VSCROLL | WS_HSCROLL | WS_TABSTOP,
+        16,
+        340,
+        814,
+        150,
+    );
+    let ok = modal_control(
+        &modal,
+        1,
+        "BUTTON",
+        accept,
+        WS_TABSTOP | BS_DEFPUSHBUTTON as u32,
+        554,
+        510,
+        160,
+        32,
+    );
+    EnableWindow(ok, (!profiles.is_empty()) as i32);
+    modal_control(&modal, 2, "BUTTON", "取消", WS_TABSTOP, 728, 510, 102, 32);
+    modal_loop(owner, modal.hwnd);
+    (modal.result == Some(true))
+        .then(|| modal.values.iter().filter_map(|s| s.parse().ok()).collect())
 }
 unsafe fn preview(owner: HWND, font: HFONT, title: &str, text: &str, accept: Option<&str>) -> bool {
     let modal = modal_window(owner, font, title, 780, 540, false, false, false);

@@ -2,6 +2,8 @@ pub mod client;
 pub mod config;
 pub mod dependencies;
 pub mod environment;
+pub mod exchange;
+pub mod logs;
 pub mod manager;
 pub mod model;
 pub mod native;

@@ -19,6 +19,8 @@
 /runtime/
 /one-shot/
 /exports/
+# Default GUI exchange exports contain transferable plaintext secrets.
+/SuperGatewayGUI-services*.json
 /tls/
 /tls-backup-*/
 /dependencies/

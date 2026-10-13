@@ -34,6 +34,8 @@ cargo build --release --locked
 | `src/model.rs`、`store.rs`、`storage.rs` | PascalCase 配置、DPAPI、原子保存、备份和配置 / 依赖路径 |
 | `src/config.rs`、`shell.rs`、`environment.rs` | 配置校验与生成、启动解释器、每服务环境合并和 PATH |
 | `src/client.rs` | 客户端导出选项校验、稳定 Codex 表名、超时映射与网络 JSON 导出 |
+| `src/exchange.rs` | Version 1 完整 GUI 服务配置交换、字段检查、独立错误预览、重名 / 端口处理和新 ID |
+| `src/logs.rs` | 按服务 ID 保留日志、筛选和按范围清空，共享容量限制 |
 | `src/manager.rs`、`native.rs` | 独立服务状态、工作线程、Win32 进程 / 管道 / Job Object |
 | `src/dependencies.rs`、`oneshot.rs` | 固定环境与包安装、一次性终端向导 |
 | `src/net.rs`、`network.rs`、`tls.rs`、`startup.rs` | MCP 协议诊断、网卡发现、内嵌 TLS、普通 / 管理员登录启动 |
@@ -41,6 +43,10 @@ cargo build --release --locked
 | `assets`、`build.rs`、`app.manifest` | 图标源图及提示词、许可、Windows 资源和 DPI 清单 |
 
 GUI 通过工作线程执行进程与网络操作，用消息和事件更新界面。每个服务独立网关和端口。GUI 创建进程时先挂起，加入 Job Object 再恢复；停止先关闭 stdin，8 秒后仍未退出则清理进程树。一次性终端可以在 GUI 退出后继续由用户操作。
+
+完整服务交换文件为 `{ "Format": "SuperGatewayGUI", "Version": 1, "Services": [...] }`，Services 使用 Profile 的 PascalCase 持久化字段，跳过运行期字段。独立版本校验及嵌套字段检查避免新配置被静默丢失；不改变 settings.dat 的兼容读取。导入逐项校验、分配新 ID，清空依赖 Installed 引用、保留固定包版本及启动偏好；端口 / 名称冲突在勾选前预览。勾选结果一次持久化，写入失败恢复内存中的原配置；不调用安装或启动。原有 mcpServers 导入共用勾选界面。
+
+导出文件为可迁移明文 JSON，与本机 DPAPI 存储不同，UI 对已知敏感值额外确认；预览不展示值，字段类型错误不回显原始值。服务文件不包含全局配置、依赖文件或 TLS 私钥。专项检查：`desktop-checks.exe exchange-ui <隔离绝对数据目录> <GUI绝对路径>`，自动验证原生勾选、中文路径文件保存、密钥确认、取消、恢复及无执行副作用；命令需要 Windows 交互桌面，仅使用受控配置。
 
 GUI 实例由当前用户 SID 和规范化配置目录共同识别，显式 / 默认指定同一配置目录使用同一实例。再次前台启动通过注册的窗口消息恢复已有实例，后台启动不弹窗；寻找窗口先于打开互斥锁，以兼容普通权限打开同用户的管理员实例。UIPI 仅放行窗口恢复、托盘回调及 `TaskbarCreated` 消息，恢复请求不接受配置或进程参数。资源管理器重新创建任务栏后重新注册图标，图标不可用则显示窗口；登录任务仍使用交互式令牌，不能运行在非交互桌面。
 

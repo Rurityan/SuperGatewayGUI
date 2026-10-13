@@ -15,7 +15,10 @@ use std::{
 };
 use windows_sys::Win32::UI::Shell::{NIM_DELETE, NIM_MODIFY, NOTIFYICONDATAW, Shell_NotifyIconW};
 use windows_sys::Win32::UI::{
-    Controls::*, HiDpi::*, Input::KeyboardAndMouse::IsWindowEnabled, Shell::ExtractIconExW,
+    Controls::*,
+    HiDpi::*,
+    Input::KeyboardAndMouse::{IsWindowEnabled, VK_DOWN, VK_HOME, VK_SPACE},
+    Shell::ExtractIconExW,
     WindowsAndMessaging::*,
 };
 use windows_sys::Win32::{
@@ -327,7 +330,7 @@ fn run() -> Result<()> {
         let _ = child.wait();
         return result;
     }
-    if mode != "ui" {
+    if mode != "ui" && mode != "log-ui" && mode != "exchange-ui" {
         return Err("unknown mode".into());
     }
     unsafe {
@@ -374,6 +377,41 @@ fn run() -> Result<()> {
             "embedded icon loads at 100/125/150/175/200/250 percent DPI",
         )?;
     }
+    if mode == "exchange-ui" {
+        store.save(&Settings {
+            services: ["导出甲", "导出乙"]
+                .into_iter()
+                .map(|name| Profile {
+                    name: name.into(),
+                    command: "not-installed.exe".into(),
+                    env: vec![gateway::model::Pair {
+                        key: "TOKEN".into(),
+                        value: "exchange-test-secret".into(),
+                    }],
+                    ..Default::default()
+                })
+                .collect(),
+            ..Default::default()
+        })?;
+    }
+    if mode == "log-ui" {
+        let mut profiles = Vec::new();
+        for name in ["日志甲", "日志乙"] {
+            let p = Profile {
+                name: name.into(),
+                command: args.get(4).ok_or("mock MCP executable missing")?.clone(),
+                port: gateway::config::free_port(&profiles)?,
+                auto_start: true,
+                listen_address: Some("127.0.0.1".into()),
+                ..Default::default()
+            };
+            profiles.push(p);
+        }
+        store.save(&Settings {
+            services: profiles,
+            ..Default::default()
+        })?;
+    }
     let mut child = Command::new(&args[3])
         .args(["--data-dir", store.root.to_str().unwrap()])
         .env("PATH", "")
@@ -381,7 +419,15 @@ fn run() -> Result<()> {
         .arg("--background")
         .spawn()
         .map_err(|e| e.to_string())?;
-    let result = unsafe { ui(&store, child.id()) };
+    let result = unsafe {
+        if mode == "exchange-ui" {
+            exchange_ui(&store, child.id())
+        } else if mode == "log-ui" {
+            log_ui(&store, child.id())
+        } else {
+            ui(&store, child.id())
+        }
+    };
     if result.is_err() {
         let _ = child.kill();
     }
@@ -631,6 +677,356 @@ unsafe fn dependency_acceptance(store: &Store, pid: u32) -> Result<()> {
     )?;
     Ok(())
 }
+unsafe fn exchange_ui(store: &Store, pid: u32) -> Result<()> {
+    unsafe fn uncheck(pid: u32, list: HWND, index: usize) -> Result<()> {
+        use windows_sys::Win32::System::{Diagnostics::Debug::WriteProcessMemory, Threading::*};
+        let process =
+            gateway::native::Handle(OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_WRITE, 0, pid));
+        let item = LVITEMW {
+            stateMask: LVIS_STATEIMAGEMASK,
+            state: 1 << 12,
+            ..std::mem::zeroed()
+        };
+        let remote = VirtualAllocEx(
+            process.0,
+            null(),
+            std::mem::size_of::<LVITEMW>(),
+            MEM_COMMIT | MEM_RESERVE,
+            PAGE_READWRITE,
+        );
+        if remote.is_null() {
+            return Err(gateway::native::error("分配勾选测试内存"));
+        }
+        let written = WriteProcessMemory(
+            process.0,
+            remote,
+            (&item as *const LVITEMW).cast(),
+            std::mem::size_of::<LVITEMW>(),
+            null_mut(),
+        );
+        if written != 0 {
+            SendMessageW(list, LVM_SETITEMSTATE, index, remote as isize);
+        }
+        VirtualFreeEx(process.0, remote, 0, MEM_RELEASE);
+        if written == 0 {
+            return Err(gateway::native::error("写入勾选测试内存"));
+        }
+        Ok(())
+    }
+    let mut h = null_mut();
+    wait(|| {
+        let mut s = WindowSearch {
+            pid,
+            window: null_mut(),
+        };
+        EnumWindows(Some(find_main), &mut s as *mut _ as isize);
+        h = s.window;
+        !h.is_null() && !GetDlgItem(h, 19).is_null()
+    })?;
+    SendMessageW(
+        h,
+        RegisterWindowMessageW(wide("SuperGatewayGUI.Restore.v1").as_ptr()),
+        0,
+        0,
+    );
+    let original = std::fs::read(store.root.join("settings.dat")).map_err(|e| e.to_string())?;
+    PostMessageW(h, WM_COMMAND, 19, 0);
+    let export = ready_dialog(pid, h, "导出 GUI 服务配置")?;
+    let list = GetDlgItem(export, 560);
+    check(
+        SendMessageW(list, LVM_GETITEMCOUNT, 0, 0) == 2,
+        "export lists all saved services",
+    )?;
+    PostMessageW(export, WM_COMMAND, 562, 0);
+    wait(|| SendMessageW(list, LVM_GETITEMSTATE, 0, LVIS_STATEIMAGEMASK as isize) == 1 << 12)?;
+    check(
+        SendMessageW(list, LVM_GETITEMSTATE, 1, LVIS_STATEIMAGEMASK as isize) == 1 << 12,
+        "select none clears every checkbox",
+    )?;
+    PostMessageW(export, WM_COMMAND, 1, 0);
+    let warning = ready_dialog(pid, export, "选择服务")?;
+    PostMessageW(warning, WM_CLOSE, 0, 0);
+    wait(|| IsWindow(warning) == 0)?;
+    check(IsWindow(export) != 0, "empty export selection stays open")?;
+    PostMessageW(export, WM_COMMAND, 561, 0);
+    wait(|| SendMessageW(list, LVM_GETITEMSTATE, 1, LVIS_STATEIMAGEMASK as isize) == 2 << 12)?;
+    check(true, "select all checks every service")?;
+    // Cross-process listview messages containing pointers require remote memory.
+    // Toggle the second checkbox via its native keyboard interaction instead.
+    SetForegroundWindow(export);
+    SendMessageW(list, WM_KEYDOWN, VK_HOME as usize, 0);
+    SendMessageW(list, WM_KEYDOWN, VK_DOWN as usize, 0);
+    SendMessageW(list, WM_KEYDOWN, VK_SPACE as usize, 0);
+    SendMessageW(list, WM_KEYUP, VK_SPACE as usize, 0);
+    check(
+        SendMessageW(list, LVM_GETITEMSTATE, 1, LVIS_STATEIMAGEMASK as isize) == 1 << 12,
+        "keyboard toggles individual service checkbox",
+    )?;
+    PostMessageW(export, WM_COMMAND, 1, 0);
+    let secret = ready_dialog(pid, h, "SuperGateway")?;
+    check(
+        !GetDlgItem(secret, IDYES).is_null(),
+        "plaintext secrets require explicit export confirmation",
+    )?;
+    PostMessageW(secret, WM_COMMAND, IDYES as usize, 0);
+    // Find the filename edit inside the modern common dialog's nested controls.
+    let mut file = null_mut();
+    wait(|| {
+        file = owned_dialog(pid, "另存为");
+        if file.is_null() {
+            file = owned_dialog(pid, "Save As");
+        }
+        !file.is_null() && IsWindowVisible(file) != 0
+    })?;
+    let path = std::path::absolute(store.root.join("中文 导出.json")).map_err(|e| e.to_string())?;
+    unsafe extern "system" fn set_file_name(hwnd: HWND, value: LPARAM) -> i32 {
+        let mut class = [0u16; 128];
+        let count = GetClassNameW(hwnd, class.as_mut_ptr(), 128);
+        if GetDlgCtrlID(hwnd) == 1001
+            && String::from_utf16_lossy(&class[..count as usize]) == "Edit"
+        {
+            SendMessageW(hwnd, WM_SETTEXT, 0, value);
+            return 0;
+        }
+        1
+    }
+    EnumChildWindows(file, Some(set_file_name), wide(&path).as_ptr() as isize);
+    PostMessageW(GetDlgItem(file, IDOK), BM_CLICK, 0, 0);
+    let success = ready_dialog(pid, h, "SuperGateway")?;
+    check(
+        path.is_file(),
+        "native save dialog writes selected configuration",
+    )?;
+    PostMessageW(success, WM_CLOSE, 0, 0);
+    wait(|| IsWindowEnabled(h) != 0)?;
+    let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let raw: serde_json::Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+    check(
+        raw["Services"].as_array().unwrap().len() == 1 && raw["Services"][0]["Name"] == "导出甲",
+        "file contains only checked service with full GUI fields",
+    )?;
+    check(
+        std::fs::read(store.root.join("settings.dat")).unwrap() == original,
+        "export does not mutate stored settings",
+    )?;
+    let import_text = gateway::exchange::export(&store.load()?.services)?;
+    if OpenClipboard(h) == 0 {
+        return Err("打开测试剪贴板失败".into());
+    }
+    EmptyClipboard();
+    let units = wide(&import_text);
+    let memory = GlobalAlloc(GMEM_MOVEABLE, units.len() * 2);
+    let ptr = GlobalLock(memory);
+    std::ptr::copy_nonoverlapping(units.as_ptr(), ptr.cast::<u16>(), units.len());
+    GlobalUnlock(memory);
+    SetClipboardData(13, memory);
+    CloseClipboard();
+    check(
+        clipboard_text(h)? == import_text,
+        "clipboard preserves native configuration before import",
+    )?;
+    PostMessageW(h, WM_COMMAND, 13, 0);
+    let import = ready_dialog(pid, h, "导入预览 · 不会自动启动").inspect_err(|_| {
+        let error = owned_dialog(pid, "SuperGateway");
+        let text = GetDlgItem(error, 65535);
+        let mut value = vec![0u16; SendMessageW(text, WM_GETTEXTLENGTH, 0, 0) as usize + 1];
+        let len = SendMessageW(text, WM_GETTEXT, value.len(), value.as_mut_ptr() as isize);
+        eprintln!(
+            "Controlled import diagnostic: {}",
+            String::from_utf16_lossy(&value[..len.max(0) as usize])
+        );
+    })?;
+    let list = GetDlgItem(import, 560);
+    check(
+        SendMessageW(list, LVM_GETITEMCOUNT, 0, 0) == 2,
+        "native import previews selectable services",
+    )?;
+    PostMessageW(import, WM_COMMAND, 2, 0);
+    wait(|| IsWindow(import) == 0)?;
+    check(
+        store.load()?.services.len() == 2,
+        "cancelled import preserves existing services",
+    )?;
+    PostMessageW(h, WM_COMMAND, 13, 0);
+    let import = ready_dialog(pid, h, "导入预览 · 不会自动启动")?;
+    let list = GetDlgItem(import, 560);
+    uncheck(pid, list, 1)?;
+    check(
+        SendMessageW(list, LVM_GETITEMSTATE, 0, LVIS_STATEIMAGEMASK as isize) == 2 << 12
+            && SendMessageW(list, LVM_GETITEMSTATE, 1, LVIS_STATEIMAGEMASK as isize) == 1 << 12,
+        "import selection keeps only first service checked",
+    )?;
+    PostMessageW(import, WM_COMMAND, 1, 0);
+    let success = ready_dialog(pid, h, "SuperGateway")?;
+    PostMessageW(success, WM_CLOSE, 0, 0);
+    wait(|| IsWindowEnabled(h) != 0)?;
+    let profiles = store.load()?.services;
+    check(
+        profiles.len() == 3
+            && profiles[2].name == "导出甲 (2)"
+            && profiles[2].env == profiles[0].env,
+        &format!(
+            "import persists only selected service and restores sensitive fields: {:?}",
+            profiles.iter().map(|p| &p.name).collect::<Vec<_>>()
+        ),
+    )?;
+    check(
+        profiles[2].id != profiles[0].id && profiles[2].port != profiles[0].port,
+        "import resolves service identity and port collisions",
+    )?;
+    check(
+        !store.root.join("dependencies").exists() && !store.root.join("runtime").exists(),
+        "import does not install dependencies or execute MCP commands",
+    )?;
+    PostMessageW(h, WM_COMMAND, 17, 0);
+    wait(|| IsWindow(h) == 0)?;
+    Ok(())
+}
+unsafe fn log_ui(store: &Store, pid: u32) -> Result<()> {
+    let mut h = null_mut();
+    wait(|| {
+        let mut search = WindowSearch {
+            pid,
+            window: null_mut(),
+        };
+        EnumWindows(Some(find_main), (&mut search as *mut WindowSearch) as isize);
+        h = search.window;
+        !h.is_null() && !GetDlgItem(h, 42).is_null()
+    })?;
+    let activate = RegisterWindowMessageW(wide("SuperGatewayGUI.Restore.v1").as_ptr());
+    SendMessageW(h, activate, 0, 0);
+    let filter = GetDlgItem(h, 42);
+    let read = |control: HWND| {
+        let mut text = vec![0u16; SendMessageW(control, WM_GETTEXTLENGTH, 0, 0) as usize + 1];
+        let len = SendMessageW(control, WM_GETTEXT, text.len(), text.as_mut_ptr() as isize);
+        String::from_utf16_lossy(&text[..len.max(0) as usize])
+    };
+    let log = GetDlgItem(h, 40);
+    if let Err(error) = wait(|| read(log).contains("[日志甲]") && read(log).contains("[日志乙]"))
+    {
+        eprintln!("log view: {}", read(log));
+        eprintln!(
+            "status: {}; filter count: {}; stored profiles: {:?}",
+            read(GetDlgItem(h, 4)),
+            SendMessageW(filter, CB_GETCOUNT, 0, 0),
+            store
+                .load()?
+                .services
+                .iter()
+                .map(|p| (&p.name, p.auto_start, &p.id))
+                .collect::<Vec<_>>()
+        );
+        let dialog = owned_dialog(pid, "SuperGateway");
+        if !dialog.is_null() {
+            eprintln!("dialog: {}", read(GetDlgItem(dialog, 65535)));
+        }
+        return Err(error);
+    }
+    check(
+        SendMessageW(filter, CB_GETCOUNT, 0, 0) == 3
+            && SendMessageW(filter, CB_GETCURSEL, 0, 0) == 0,
+        "log filter defaults to all and lists both services",
+    )?;
+    let select = |index| {
+        SendMessageW(filter, CB_SETCURSEL, index, 0);
+        PostMessageW(h, WM_COMMAND, 42 | ((CBN_SELCHANGE as usize) << 16), 0);
+    };
+    select(1);
+    wait(|| read(log).contains("[日志甲]") && !read(log).contains("[日志乙]"))?;
+    check(
+        true,
+        "service log filter excludes the other service without discarding history",
+    )?;
+    SendMessageW(filter, WM_MOUSEWHEEL, (120u16 as usize) << 16, 0);
+    check(
+        SendMessageW(filter, CB_GETCURSEL, 0, 0) == 1,
+        "log filter wheel cannot accidentally change service",
+    )?;
+    let profiles = store.load()?.services;
+    let before = read(log);
+    check(
+        !gateway::net::test(&profiles[0])?.is_empty(),
+        "filtered service still initializes MCP and lists tools",
+    )?;
+    wait(|| read(log) != before)?;
+    check(
+        !read(log).contains("[日志乙]"),
+        "new log events update only the filtered service view",
+    )?;
+    select(2);
+    wait(|| read(log).contains("[日志乙]") && !read(log).contains("[日志甲]"))?;
+    check(
+        true,
+        "switching filter restores retained second service history",
+    )?;
+    select(1);
+    wait(|| read(log).contains("[日志甲]"))?;
+    let panel = GetDlgItem(h, 22);
+    wait(|| IsWindowEnabled(GetDlgItem(h, 30)) != 0)
+        .map_err(|e| format!("等待启动批次结束：{e}"))?;
+    SendMessageW(
+        GetDlgItem(panel, 100),
+        WM_SETTEXT,
+        0,
+        wide("日志甲改名").as_ptr() as isize,
+    );
+    PostMessageW(h, WM_COMMAND, 30, 0);
+    let prompt =
+        ready_dialog(pid, h, "SuperGateway").map_err(|e| format!("等待改名保存弹窗：{e}"))?;
+    PostMessageW(prompt, WM_CLOSE, 0, 0);
+    wait(|| IsWindowEnabled(h) != 0).map_err(|e| format!("等待关闭改名弹窗：{e}"))?;
+    let mut name = [0u16; 256];
+    SendMessageW(filter, CB_GETLBTEXT, 1, name.as_mut_ptr() as isize);
+    check(
+        SendMessageW(filter, CB_GETCURSEL, 0, 0) == 1
+            && String::from_utf16_lossy(&name).contains("日志甲改名")
+            && read(log).contains("[日志甲]"),
+        "renaming service keeps filter and historical records by stable ID",
+    )?;
+    PostMessageW(h, WM_COMMAND, 41, 0);
+    wait(|| read(log).is_empty())?;
+    select(0);
+    wait(|| read(log).contains("[日志乙]"))?;
+    check(
+        !read(log).contains("[日志甲]"),
+        "clearing selected service preserves other service logs",
+    )?;
+    PostMessageW(h, WM_COMMAND, 41, 0);
+    wait(|| read(log).is_empty())?;
+    check(true, "clearing all removes all retained log records")?;
+    select(1);
+    wait(|| SendMessageW(filter, CB_GETCURSEL, 0, 0) == 1)?;
+    PostMessageW(h, WM_COMMAND, 11, 0);
+    let remove = ready_dialog(pid, h, "SuperGateway")?;
+    wait(|| read(GetDlgItem(remove, 65535)).contains("并停止其网关"))?;
+    PostMessageW(remove, WM_COMMAND, IDYES as usize, 0);
+    let mut dependencies_prompt = null_mut();
+    wait(|| {
+        dependencies_prompt = owned_dialog(pid, "SuperGateway");
+        !dependencies_prompt.is_null()
+            && read(GetDlgItem(dependencies_prompt, 65535)).contains("是否同时删除")
+    })?;
+    PostMessageW(dependencies_prompt, WM_COMMAND, IDNO as usize, 0);
+    wait(|| {
+        store
+            .load()
+            .is_ok_and(|settings| settings.services.len() == 1)
+    })?;
+    check(
+        SendMessageW(filter, CB_GETCOUNT, 0, 0) == 2
+            && SendMessageW(filter, CB_GETCURSEL, 0, 0) == 0,
+        "deleting filtered service refreshes choices and returns to all logs",
+    )?;
+    PostMessageW(h, WM_COMMAND, 17, 0);
+    wait(|| IsWindow(h) == 0)?;
+    check(
+        profiles
+            .iter()
+            .all(|p| gateway::net::profile_health(p).is_err()),
+        "log filter test exits and cleans both gateway services",
+    )?;
+    Ok(())
+}
 unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
     let mut context = DesktopContext {
         dpi: SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2),
@@ -698,6 +1094,15 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
     };
     action(10);
     check(IsWindowEnabled(control(100)) != 0, "native form enabled")?;
+    let mut filter_rect = std::mem::zeroed();
+    let mut copy_rect = std::mem::zeroed();
+    GetWindowRect(GetDlgItem(h, 42), &mut filter_rect);
+    GetWindowRect(GetDlgItem(h, 35), &mut copy_rect);
+    check(
+        filter_rect.right <= copy_rect.left
+            && SendMessageW(GetDlgItem(h, 42), CB_GETCOUNT, 0, 0) == 2,
+        "log selector follows new service and does not overlap address copy button",
+    )?;
     for id in [1103, 1104] {
         let label = control(id);
         let mut text = [0u16; 128];
