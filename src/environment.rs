@@ -170,6 +170,7 @@ pub fn prepare(p: &Profile) -> Result<Profile> {
     result.env.push(Pair {
         key: "PATH".into(),
         value,
+        ..Default::default()
     });
     result.environment_prepared = true;
     Ok(result)
@@ -212,7 +213,11 @@ pub fn preview(root: &std::path::Path, p: &Profile) -> Result<String> {
                     "托管模式保留变量 {key}，请删除覆盖项；PATH 请使用附加程序目录。"
                 ));
             }
-            prepared.env.push(Pair { key, value });
+            prepared.env.push(Pair {
+                key,
+                value,
+                ..Default::default()
+            });
         }
         prepared.managed_runtime = true;
     }

@@ -72,7 +72,11 @@ pub fn prepare(
     }
     prepared.env = environment
         .into_iter()
-        .map(|(key, value)| crate::model::Pair { key, value })
+        .map(|(key, value)| crate::model::Pair {
+            key,
+            value,
+            ..Default::default()
+        })
         .collect();
     let environment = crate::environment::effective(&prepared)?;
     Ok(Invocation {

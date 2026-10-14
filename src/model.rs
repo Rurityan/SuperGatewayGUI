@@ -6,6 +6,7 @@ use windows_sys::{Win32::System::Com::CoCreateGuid, core::GUID};
 pub struct Pair {
     pub key: String,
     pub value: String,
+    pub hidden: bool,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "PascalCase", default)]
@@ -119,6 +120,12 @@ impl Profile {
         let mut b = other.clone();
         a.client = Default::default();
         b.client = Default::default();
+        for pair in a.env.iter_mut().chain(&mut a.headers) {
+            pair.hidden = false;
+        }
+        for pair in b.env.iter_mut().chain(&mut b.headers) {
+            pair.hidden = false;
+        }
         a == b
     }
     pub fn listen_host(&self) -> &str {
@@ -153,6 +160,25 @@ impl Profile {
             .chain(self.client.environment.iter().map(|v| v.value.clone()))
             .filter(|s| !s.is_empty())
             .collect()
+    }
+}
+#[cfg(test)]
+mod visibility_tests {
+    use super::*;
+    #[test]
+    fn legacy_pairs_visible_and_hidden_setting_does_not_restart_gateway() {
+        let pair: Pair = serde_json::from_str(r#"{"Key":"TOKEN","Value":"secret"}"#).unwrap();
+        assert!(!pair.hidden);
+        let mut original = Profile::default();
+        original.env.push(pair);
+        let mut hidden = original.clone();
+        hidden.env[0].hidden = true;
+        assert!(original.gateway_eq(&hidden));
+        assert_ne!(original, hidden);
+        let restored: Profile =
+            serde_json::from_str(&serde_json::to_string(&hidden).unwrap()).unwrap();
+        assert!(restored.env[0].hidden);
+        assert_eq!(restored.env[0].value, "secret");
     }
 }
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]

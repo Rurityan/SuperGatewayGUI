@@ -448,6 +448,7 @@ pub fn import(text: &str, existing: &[Profile]) -> Result<Import> {
                             Ok(Pair {
                                 key: k.clone(),
                                 value: v.as_str().ok_or("键值内容必须为字符串")?.into(),
+                                ..Default::default()
                             })
                         })
                         .collect(),

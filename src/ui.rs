@@ -1092,7 +1092,7 @@ impl App {
             1,
         );
         for (base, title, y) in [
-            (ENV, "环境变量 · 值默认隐藏", 108),
+            (ENV, "环境变量 · 值默认显示，可选隐藏", 108),
             (HEADERS, "请求头 / 响应头 · 值默认隐藏", 270),
             (KEYS, "额外访问密钥 · 用于多客户端或密钥轮换", 432),
         ] {
@@ -1124,6 +1124,18 @@ impl App {
                 );
             }
         }
+        self.field(
+            159,
+            "BUTTON",
+            "隐藏环境变量值",
+            BS_AUTOCHECKBOX as u32 | WS_TABSTOP,
+            288,
+            230,
+            190,
+            30,
+            2,
+            0,
+        );
         self.field(
             1153,
             "STATIC",
@@ -1919,7 +1931,16 @@ impl App {
                     self.ctrl(id),
                     LB_ADDSTRING,
                     0,
-                    wide(format!("{}  =  ********", p.key)).as_ptr() as isize,
+                    wide(format!(
+                        "{}  =  {}",
+                        p.key,
+                        if id == ENV && !self.check(159) && !p.hidden {
+                            p.value.as_str()
+                        } else {
+                            "********"
+                        }
+                    ))
+                    .as_ptr() as isize,
                 );
             }
         }
@@ -2550,6 +2571,7 @@ impl App {
                         .map(|v| Pair {
                             key: "密钥".into(),
                             value: v.clone(),
+                            ..Default::default()
                         })
                         .collect()
                 };
@@ -2567,7 +2589,9 @@ impl App {
                     } else {
                         pairs[index as usize].clone()
                     };
-                    if let Some(pair) = pair_dialog(self.hwnd, self.font, initial, base == KEYS) {
+                    if let Some(pair) =
+                        pair_dialog(self.hwnd, self.font, initial, base == KEYS, base == ENV)
+                    {
                         if operation == 1 {
                             pairs.push(pair);
                         } else {
@@ -2584,6 +2608,7 @@ impl App {
                 }
                 self.pair_lists();
             }
+            159 => self.pair_lists(),
             41 => {
                 self.logs.clear(self.log_filter.as_deref());
                 self.render_logs();
@@ -2689,6 +2714,8 @@ struct Modal {
     storage: bool,
     one_shot: bool,
     service_count: Option<usize>,
+    hide_content: bool,
+    hidden_value: bool,
     dispatching: std::cell::Cell<bool>,
 }
 unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LRESULT {
@@ -2841,6 +2868,8 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                         }
                     }
                     if modal.pair {
+                        modal.hidden_value = SendMessageW(GetDlgItem(hwnd, 503), BM_GETCHECK, 0, 0)
+                            == BST_CHECKED as isize;
                         let read = |id| {
                             let control = GetDlgItem(hwnd, id);
                             let mut value = vec![0u16; GetWindowTextLengthW(control) as usize + 1];
@@ -2929,8 +2958,13 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                     }
                 }
                 503 => {
-                    let show = SendMessageW(GetDlgItem(hwnd, 503), BM_GETCHECK, 0, 0)
+                    let checked = SendMessageW(GetDlgItem(hwnd, 503), BM_GETCHECK, 0, 0)
                         == BST_CHECKED as isize;
+                    let show = if modal.hide_content {
+                        !checked
+                    } else {
+                        checked
+                    };
                     SendMessageW(
                         GetDlgItem(hwnd, 501),
                         EM_SETPASSWORDCHAR,
@@ -2970,6 +3004,8 @@ unsafe fn modal_window(
         storage: false,
         one_shot: false,
         service_count: None,
+        hide_content: false,
+        hidden_value: false,
         dispatching: std::cell::Cell::new(false),
     });
     let dpi = GetDpiForWindow(owner) as i32;
@@ -3288,8 +3324,14 @@ unsafe fn preview(owner: HWND, font: HFONT, title: &str, text: &str, accept: Opt
     modal_loop(owner, modal.hwnd);
     accept.is_some() && modal.result == Some(true)
 }
-unsafe fn pair_dialog(owner: HWND, font: HFONT, pair: Pair, key: bool) -> Option<Pair> {
-    pair_dialog_enabled(owner, font, pair, key, None).map(|v| v.0)
+unsafe fn pair_dialog(
+    owner: HWND,
+    font: HFONT,
+    pair: Pair,
+    key: bool,
+    environment: bool,
+) -> Option<Pair> {
+    pair_dialog_enabled(owner, font, pair, key, None, environment).map(|v| v.0)
 }
 unsafe fn pair_dialog_enabled(
     owner: HWND,
@@ -3297,17 +3339,23 @@ unsafe fn pair_dialog_enabled(
     pair: Pair,
     key: bool,
     enabled: Option<bool>,
+    environment: bool,
 ) -> Option<(Pair, bool)> {
-    let modal = modal_window(
+    let mut modal = modal_window(
         owner,
         font,
-        "编辑键值 · 默认隐藏内容",
+        if environment {
+            "编辑环境变量 · 可选隐藏内容"
+        } else {
+            "编辑键值 · 默认隐藏内容"
+        },
         560,
         310,
         true,
         key,
         false,
     );
+    modal.hide_content = environment;
     modal_control(
         &modal,
         510,
@@ -3339,7 +3387,12 @@ unsafe fn pair_dialog_enabled(
         501,
         "EDIT",
         &pair.value,
-        ES_PASSWORD as u32 | ES_AUTOHSCROLL as u32 | WS_TABSTOP,
+        if environment && !pair.hidden {
+            0
+        } else {
+            ES_PASSWORD as u32
+        } | ES_AUTOHSCROLL as u32
+            | WS_TABSTOP,
         120,
         72,
         390,
@@ -3349,13 +3402,25 @@ unsafe fn pair_dialog_enabled(
         &modal,
         503,
         "BUTTON",
-        "显示内容",
+        if environment {
+            "隐藏内容"
+        } else {
+            "显示内容"
+        },
         BS_AUTOCHECKBOX as u32 | WS_TABSTOP,
         120,
         120,
         150,
         28,
     );
+    if environment && pair.hidden {
+        SendMessageW(
+            GetDlgItem(modal.hwnd, 503),
+            BM_SETCHECK,
+            BST_CHECKED as usize,
+            0,
+        );
+    }
     modal_control(
         &modal,
         1,
@@ -3398,6 +3463,11 @@ unsafe fn pair_dialog_enabled(
             Pair {
                 key: modal.values[0].trim().into(),
                 value: modal.values[1].clone(),
+                hidden: if environment {
+                    modal.hidden_value
+                } else {
+                    pair.hidden
+                },
             },
             modal.values.get(2).is_none_or(|v| v == "true"),
         ))

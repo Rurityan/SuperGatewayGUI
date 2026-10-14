@@ -83,6 +83,7 @@ fn run() -> Result<()> {
         p.env = vec![Pair {
             key: "RECORD_FILE".into(),
             value: root.join("child.txt").to_string_lossy().into_owned(),
+            ..Default::default()
         }];
         manager.start(&p)?;
         let mut session = Session::connect(&p, Duration::from_secs(600))?;
@@ -137,6 +138,7 @@ fn run() -> Result<()> {
     secure.env = vec![Pair {
         key: "SECRET".into(),
         value: "secret-env".into(),
+        ..Default::default()
     }];
     let store = Store::new(root.join("settings"))?;
     store.save(&Settings {
@@ -195,6 +197,7 @@ fn run() -> Result<()> {
         p.env = vec![Pair {
             key: "RECORD_FILE".into(),
             value: record.to_string_lossy().into_owned(),
+            ..Default::default()
         }];
         manager.start(&p)?;
         let tools = net::test(&p)?;
@@ -309,10 +312,12 @@ fn run() -> Result<()> {
         Pair {
             key: "SECRET".into(),
             value: "${UNSET_SG_RUST:-expanded-secret}".into(),
+            ..Default::default()
         },
         Pair {
             key: "EMPTY_VALUE".into(),
             value: String::new(),
+            ..Default::default()
         },
     ];
     masked.api_key = "${UNSET_SG_RUST:-expanded-secret}".into();
@@ -427,6 +432,7 @@ fn run() -> Result<()> {
     relative.env = vec![Pair {
         key: "EMPTY".into(),
         value: String::new(),
+        ..Default::default()
     }];
     manager.start(&relative)?;
     check(
@@ -536,10 +542,12 @@ fn run() -> Result<()> {
             Pair {
                 key: "RECORD_FILE".into(),
                 value: record.to_string_lossy().into(),
+                ..Default::default()
             },
             Pair {
                 key: "SECRET".into(),
                 value: "shell-test-secret".into(),
+                ..Default::default()
             },
         ];
         let (content, mut secrets) = config::build(&via_shell, true)?;

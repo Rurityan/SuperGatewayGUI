@@ -282,10 +282,12 @@ fs.writeFileSync(path.join(base,'result.json'),JSON.stringify({input:line}));pro
         gateway::model::Pair {
             key: "SG_ONESHOT_OUTPUT".into(),
             value: root.to_string_lossy().into_owned(),
+            ..Default::default()
         },
         gateway::model::Pair {
             key: "TEST_SECRET".into(),
             value: "console-secret".into(),
+            ..Default::default()
         },
     ];
     let args = vec![

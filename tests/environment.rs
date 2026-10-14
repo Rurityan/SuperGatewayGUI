@@ -32,6 +32,7 @@ fn defaults_validation_preview_and_encrypted_restoration() {
         env: vec![Pair {
             key: "SECRET".into(),
             value: "environment-preview-secret".into(),
+            ..Default::default()
         }],
         ..Default::default()
     };
@@ -63,6 +64,7 @@ fn defaults_validation_preview_and_encrypted_restoration() {
     p.env.push(Pair {
         key: "path".into(),
         value: "override".into(),
+        ..Default::default()
     });
     assert!(
         config::validate(&p, false)
@@ -105,14 +107,17 @@ fn service_environment_protocols() {
             Pair {
                 key: "sg_service_marker".into(),
                 value: "one".into(),
+                ..Default::default()
             },
             Pair {
                 key: "SG_EMPTY".into(),
                 value: String::new(),
+                ..Default::default()
             },
             Pair {
                 key: "sg_parent_only".into(),
                 value: "service-overrides-parent".into(),
+                ..Default::default()
             },
         ],
         ..Default::default()
@@ -135,6 +140,7 @@ fn service_environment_protocols() {
             root.join("managed-node").display(),
             env::windows_paths().join(";")
         ),
+        ..Default::default()
     });
     let path = env::path(&managed).unwrap();
     assert!(path.find("managed-node").unwrap() < path.find("Blender 中文").unwrap());
@@ -143,6 +149,7 @@ fn service_environment_protocols() {
     explicit.env.push(Pair {
         key: "Path".into(),
         value: r"D:\显式目录".into(),
+        ..Default::default()
     });
     assert_eq!(
         env::path(&explicit).unwrap(),
@@ -160,6 +167,7 @@ fn service_environment_protocols() {
     second.env = vec![Pair {
         key: "SG_SERVICE_MARKER".into(),
         value: "two".into(),
+        ..Default::default()
     }];
     manager.start(&p).unwrap();
     manager.start(&second).unwrap();

@@ -294,6 +294,7 @@ fn installed_offline_and_versions() {
         p.env.push(gateway::model::Pair {
             key: "SG_SERVICE_MARKER".into(),
             value: format!("environment-service-{index}"),
+            ..Default::default()
         });
     }
     let (tx, rx) = mpsc::sync_channel(4096);

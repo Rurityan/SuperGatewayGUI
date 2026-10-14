@@ -135,10 +135,12 @@ mod tests {
             env: vec![Pair {
                 key: "SECRET".into(),
                 value: "secret".into(),
+                ..Default::default()
             }],
             headers: vec![Pair {
                 key: "Authorization".into(),
                 value: "Bearer secret".into(),
+                ..Default::default()
             }],
             api_key: "key".into(),
             api_keys: vec!["extra".into()],
@@ -150,6 +152,7 @@ mod tests {
     fn complete_round_trip() {
         let mut p = sample();
         p.inherit_environment = false;
+        p.env[0].hidden = true;
         p.additional_paths = vec![r"D:\中文 路径".into()];
         p.client.tool_timeout_sec = Some(300);
         p.client.startup_timeout_sec = Some(30);

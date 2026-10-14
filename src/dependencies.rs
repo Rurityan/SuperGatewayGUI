@@ -418,7 +418,11 @@ pub fn prepared(root: &Path, p: &Profile) -> Result<Profile> {
                 "托管模式保留环境变量 {key}；请删除服务中的同名变量或切回原有模式"
             ));
         }
-        result.env.push(Pair { key, value });
+        result.env.push(Pair {
+            key,
+            value,
+            ..Default::default()
+        });
     }
     result.managed = false;
     result.managed_runtime = true;

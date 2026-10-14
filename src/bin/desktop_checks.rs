@@ -387,6 +387,7 @@ fn run() -> Result<()> {
                     env: vec![gateway::model::Pair {
                         key: "TOKEN".into(),
                         value: "exchange-test-secret".into(),
+                        ..Default::default()
                     }],
                     ..Default::default()
                 })
@@ -1261,8 +1262,8 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
     )?;
     action(30);
     action(131);
-    let modal = ready_dialog(pid, h, "编辑键值 · 默认隐藏内容")?;
-    check(!modal.is_null(), "secret editor opens")?;
+    let modal = ready_dialog(pid, h, "编辑环境变量 · 可选隐藏内容")?;
+    check(!modal.is_null(), "environment editor opens")?;
     check(
         icon_size(SendMessageW(modal, WM_GETICON, ICON_SMALL as usize, 0) as HICON).is_some(),
         "configuration dialog uses embedded icon",
@@ -1280,8 +1281,25 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
         wide("sensitive-value").as_ptr() as isize,
     );
     check(
+        SendMessageW(GetDlgItem(modal, 501), EM_GETPASSWORDCHAR, 0, 0) == 0,
+        "environment value visible by default",
+    )?;
+    SendMessageW(GetDlgItem(modal, 503), BM_SETCHECK, BST_CHECKED as usize, 0);
+    SendMessageW(modal, WM_COMMAND, 503, 0);
+    check(
         SendMessageW(GetDlgItem(modal, 501), EM_GETPASSWORDCHAR, 0, 0) != 0,
-        "secret masked by default",
+        "environment editor can hide value",
+    )?;
+    SendMessageW(
+        GetDlgItem(modal, 503),
+        BM_SETCHECK,
+        BST_UNCHECKED as usize,
+        0,
+    );
+    SendMessageW(modal, WM_COMMAND, 503, 0);
+    check(
+        SendMessageW(GetDlgItem(modal, 501), EM_GETPASSWORDCHAR, 0, 0) == 0,
+        "environment editor restores visible value",
     )?;
     PostMessageW(modal, WM_COMMAND, 1, 0);
     thread::sleep(Duration::from_millis(150));
@@ -1290,6 +1308,85 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
         store.load()?.services[0].env[0].value == "sensitive-value",
         "secret list edit persisted",
     )?;
+    let read_env_row = || {
+        let list = control(130);
+        let len = SendMessageW(list, LB_GETTEXTLEN, 0, 0);
+        let mut text = vec![0u16; len.max(0) as usize + 1];
+        SendMessageW(list, LB_GETTEXT, 0, text.as_mut_ptr() as isize);
+        String::from_utf16_lossy(&text[..len.max(0) as usize])
+    };
+    check(
+        read_env_row().contains("sensitive-value"),
+        "environment list shows value by default",
+    )?;
+    SendMessageW(control(159), BM_SETCHECK, BST_CHECKED as usize, 0);
+    SendMessageW(h, WM_COMMAND, 159, 0);
+    check(
+        !read_env_row().contains("sensitive-value") && read_env_row().contains("********"),
+        "environment list optionally masks values",
+    )?;
+    SendMessageW(control(130), LB_SETCURSEL, 0, 0);
+    action(132);
+    let hidden = ready_dialog(pid, h, "编辑环境变量 · 可选隐藏内容")?;
+    SendMessageW(
+        GetDlgItem(hidden, 503),
+        BM_SETCHECK,
+        BST_CHECKED as usize,
+        0,
+    );
+    SendMessageW(hidden, WM_COMMAND, 503, 0);
+    check(
+        SendMessageW(GetDlgItem(hidden, 501), EM_GETPASSWORDCHAR, 0, 0) != 0,
+        "environment editor hides value when checked",
+    )?;
+    PostMessageW(hidden, WM_COMMAND, 1, 0);
+    wait(|| IsWindow(hidden) == 0)?;
+    action(30);
+    check(
+        store.load()?.services[0].env[0].hidden,
+        "per-variable hidden preference persists through DPAPI storage",
+    )?;
+    SendMessageW(control(159), BM_SETCHECK, BST_UNCHECKED as usize, 0);
+    SendMessageW(h, WM_COMMAND, 159, 0);
+    check(
+        !read_env_row().contains("sensitive-value"),
+        "global unhide cannot reveal individually hidden variable",
+    )?;
+    SendMessageW(control(20), LB_SETCURSEL, 0, 0);
+    SendMessageW(h, WM_COMMAND, 20 | ((LBN_SELCHANGE as usize) << 16), 0);
+    check(
+        !read_env_row().contains("sensitive-value"),
+        "reloading saved service keeps hidden variable masked",
+    )?;
+    SendMessageW(control(130), LB_SETCURSEL, 0, 0);
+    action(132);
+    let reopened = ready_dialog(pid, h, "编辑环境变量 · 可选隐藏内容")?;
+    check(
+        SendMessageW(GetDlgItem(reopened, 503), BM_GETCHECK, 0, 0) == BST_CHECKED as isize
+            && SendMessageW(GetDlgItem(reopened, 501), EM_GETPASSWORDCHAR, 0, 0) != 0,
+        "reopened environment editor restores hidden checkbox and mask",
+    )?;
+    SendMessageW(
+        GetDlgItem(reopened, 503),
+        BM_SETCHECK,
+        BST_UNCHECKED as usize,
+        0,
+    );
+    SendMessageW(reopened, WM_COMMAND, 503, 0);
+    PostMessageW(reopened, WM_COMMAND, 2, 0);
+    wait(|| IsWindow(reopened) == 0)?;
+    check(
+        store.load()?.services[0].env[0].hidden && !read_env_row().contains("sensitive-value"),
+        "cancelled visibility edit preserves saved hidden preference",
+    )?;
+    action(135);
+    let header = ready_dialog(pid, h, "编辑键值 · 默认隐藏内容")?;
+    check(
+        SendMessageW(GetDlgItem(header, 501), EM_GETPASSWORDCHAR, 0, 0) != 0,
+        "request header remains masked by default",
+    )?;
+    PostMessageW(header, WM_COMMAND, 2, 0);
+    wait(|| IsWindow(header) == 0)?;
     SendMessageW(
         control(100),
         WM_SETTEXT,
@@ -1909,5 +2006,50 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
     action(17);
     wait(|| IsWindow(h) == 0)?;
     check(true, "tray/application exit completes")?;
+    thread::sleep(Duration::from_millis(200));
+    let mut restarted = Command::new(&executable)
+        .arg("--data-dir")
+        .arg(&store.root)
+        .env("PATH", "")
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    let restarted_check = (|| -> Result<()> {
+        let mut window = null_mut();
+        wait(|| {
+            let mut s = WindowSearch {
+                pid: restarted.id(),
+                window: null_mut(),
+            };
+            EnumWindows(Some(find_main), &mut s as *mut _ as isize);
+            window = s.window;
+            !window.is_null() && !GetDlgItem(GetDlgItem(window, 22), 130).is_null()
+        })?;
+        let panel = GetDlgItem(window, 22);
+        let list = GetDlgItem(panel, 130);
+        let mut text = vec![0u16; SendMessageW(list, LB_GETTEXTLEN, 0, 0).max(0) as usize + 1];
+        let count = SendMessageW(list, LB_GETTEXT, 0, text.as_mut_ptr() as isize);
+        check(
+            !String::from_utf16_lossy(&text[..count.max(0) as usize]).contains("sensitive-value"),
+            "actual GUI restart keeps individually hidden value masked",
+        )?;
+        SendMessageW(list, LB_SETCURSEL, 0, 0);
+        PostMessageW(window, WM_COMMAND, 132, 0);
+        let editor = ready_dialog(restarted.id(), window, "编辑环境变量 · 可选隐藏内容")?;
+        check(
+            SendMessageW(GetDlgItem(editor, 503), BM_GETCHECK, 0, 0) == BST_CHECKED as isize
+                && SendMessageW(GetDlgItem(editor, 501), EM_GETPASSWORDCHAR, 0, 0) != 0,
+            "actual GUI restart restores per-variable hidden checkbox",
+        )?;
+        PostMessageW(editor, WM_COMMAND, 2, 0);
+        wait(|| IsWindow(editor) == 0)?;
+        PostMessageW(window, WM_COMMAND, 17, 0);
+        wait(|| IsWindow(window) == 0)?;
+        Ok(())
+    })();
+    if restarted_check.is_err() {
+        let _ = restarted.kill();
+    }
+    let _ = restarted.wait();
+    restarted_check?;
     Ok(())
 }

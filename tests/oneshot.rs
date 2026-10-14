@@ -106,6 +106,7 @@ fn one_off_network_and_service_environment_are_child_only() {
     p.env = vec![Pair {
         key: "CUSTOM_VALUE".into(),
         value: "test-secret".into(),
+        ..Default::default()
     }];
     p.inherit_environment = false;
     let extra = root.join("Blender 中文 目录");
