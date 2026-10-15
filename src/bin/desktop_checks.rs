@@ -1037,6 +1037,20 @@ unsafe fn log_ui(store: &Store, pid: u32) -> Result<()> {
         "deleting filtered service refreshes choices and returns to all logs",
     )?;
     PostMessageW(h, WM_COMMAND, 17, 0);
+    let exit_prompt = ready_dialog(pid, h, "SuperGateway")?;
+    check(
+        read(GetDlgItem(exit_prompt, 65535)).contains("是否关闭这些 MCP 服务并退出 GUI"),
+        "exit with running MCP asks before stopping services",
+    )?;
+    PostMessageW(exit_prompt, WM_COMMAND, IDNO as usize, 0);
+    wait(|| IsWindowEnabled(h) != 0)?;
+    check(
+        IsWindow(h) != 0 && gateway::net::profile_health(&profiles[1]).is_ok(),
+        "declining exit keeps GUI and remaining MCP running",
+    )?;
+    PostMessageW(h, WM_COMMAND, 17, 0);
+    let exit_prompt = ready_dialog(pid, h, "SuperGateway")?;
+    PostMessageW(exit_prompt, WM_COMMAND, IDYES as usize, 0);
     wait(|| IsWindow(h) == 0)?;
     check(
         profiles
@@ -1536,9 +1550,14 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
     SendMessageW(control(102), WM_SETTEXT, 0, wide("npx").as_ptr() as isize);
     action(160);
     let arguments = ready_dialog(pid, h, "编辑服务启动参数")?;
-    for (index, value) in ["fixture-only-package", "-y", "", "中文 路径与\"引号\""]
-        .iter()
-        .enumerate()
+    for (index, value) in [
+        " \r\nfixture-only-package\r\n ",
+        " \t-y ",
+        "",
+        "中文 路径与\"引号\"",
+    ]
+    .iter()
+    .enumerate()
     {
         SendMessageW(arguments, WM_COMMAND, 580, 0);
         SendMessageW(
@@ -1552,6 +1571,26 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
         GetWindowLongPtrW(GetDlgItem(arguments, 7001), GWL_STYLE) & ES_MULTILINE as isize == 0,
         "arguments use independent single-line edit controls",
     )?;
+    if OpenClipboard(h) == 0 {
+        return Err("打开参数粘贴测试剪贴板失败".into());
+    }
+    EmptyClipboard();
+    let units = wide(" \r\n\t-y\r\n ");
+    let memory = GlobalAlloc(GMEM_MOVEABLE, units.len() * 2);
+    let ptr = GlobalLock(memory);
+    std::ptr::copy_nonoverlapping(units.as_ptr(), ptr.cast::<u16>(), units.len());
+    GlobalUnlock(memory);
+    SetClipboardData(13, memory);
+    CloseClipboard();
+    let edit = GetDlgItem(arguments, 7009);
+    SendMessageW(edit, EM_SETSEL, 0, -1);
+    SendMessageW(edit, WM_PASTE, 0, 0);
+    let mut pasted = [0u16; 16];
+    let copied = SendMessageW(edit, WM_GETTEXT, pasted.len(), pasted.as_mut_ptr() as isize);
+    check(
+        String::from_utf16_lossy(&pasted[..copied as usize]) == "-y",
+        "argument paste trims surrounding spaces, tabs and newlines before single-line insertion",
+    )?;
     check(
         GetWindowLongPtrW(GetDlgItem(arguments, 7005), GWL_STYLE) & 0x1f == 0x10,
         "argument rows have native horizontal separators",
@@ -1559,11 +1598,18 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
     SendMessageW(arguments, WM_COMMAND, 7010, 0);
     SendMessageW(arguments, WM_COMMAND, 7020, 0);
     PostMessageW(arguments, WM_COMMAND, 1, 0);
-    wait(|| IsWindow(arguments) == 0)?;
+    let cleaned = ready_dialog(pid, arguments, "参数已整理").map_err(|e| {
+        format!(
+            "等待参数清理提示失败（编辑器存活={}）：{e}",
+            IsWindow(arguments)
+        )
+    })?;
+    PostMessageW(cleaned, WM_CLOSE, 0, 0);
+    wait(|| IsWindow(arguments) == 0).map_err(|e| format!("关闭已清理参数编辑器：{e}"))?;
     action(30);
     check(
         store.load()?.services[0].args == ["-y", "fixture-only-package", "中文 路径与\"引号\""],
-        "argument move/delete preserve ordering, Chinese, spaces and quotes",
+        "argument confirmation trims boundary whitespace and preserves ordering, Chinese, inner spaces and quotes",
     )?;
     action(160);
     let arguments = ready_dialog(pid, h, "编辑服务启动参数")?;
@@ -1908,8 +1954,15 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
         "service environment preview opens before dependencies are installed",
     )?;
     let body = GetDlgItem(preview, 500);
-    let mut content = vec![0u16; GetWindowTextLengthW(body) as usize + 1];
-    GetWindowTextW(body, content.as_mut_ptr(), content.len() as i32);
+    // EDIT contents live in the target process; GetWindowText only retrieves
+    // the cached creation caption, not text loaded later with WM_SETTEXT.
+    let mut content = vec![0u16; SendMessageW(body, WM_GETTEXTLENGTH, 0, 0) as usize + 1];
+    SendMessageW(
+        body,
+        WM_GETTEXT,
+        content.len(),
+        content.as_mut_ptr() as isize,
+    );
     let content = String::from_utf16_lossy(&content);
     check(
         content.contains("Windows 基础环境")

@@ -560,7 +560,7 @@ unsafe extern "system" fn main_proc(hwnd: HWND, message: u32, w: WPARAM, l: LPAR
                     match selected {
                         200 => app.restore(),
                         201 => app.stop_many(app.settings.services.clone()),
-                        202 => app.exit(),
+                        202 => app.request_exit(),
                         _ => {}
                     }
                 }
@@ -1660,6 +1660,8 @@ impl App {
             return Err("请先添加或选择服务".into());
         }
         let mut p = self.draft.clone();
+        gateway::arguments::normalize(&mut p.args);
+        gateway::arguments::normalize(&mut p.dependency.args);
         let seconds = |id| -> Result<Option<u32>> {
             let value = self.text(id);
             if value.trim().is_empty() {
@@ -2043,6 +2045,23 @@ impl App {
             Ok(())
         });
     }
+    unsafe fn request_exit(&mut self) {
+        if self.exiting {
+            return;
+        }
+        let count = self.manager.running_count();
+        if count != 0
+            && self.message(
+                &format!(
+                    "当前有 {count} 个 MCP 网关服务正在运行。\r\n\r\n是否关闭这些 MCP 服务并退出 GUI？\r\n选择“否”将保持服务和 GUI 运行。"
+                ),
+                MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2,
+            ) != IDYES
+        {
+            return;
+        }
+        self.exit();
+    }
     unsafe fn exit(&mut self) {
         if self.exiting {
             return;
@@ -2399,7 +2418,7 @@ impl App {
                 }
                 None => {}
             },
-            17 => self.exit(),
+            17 => self.request_exit(),
             145 => self.dependencies_dialog(true)?,
             161 => {
                 let profile = self.read()?;
@@ -3167,7 +3186,9 @@ unsafe fn modal_control(
     let control = CreateWindowExW(
         if class == "EDIT" { WS_EX_CLIENTEDGE } else { 0 },
         wide(class).as_ptr(),
-        wide(text).as_ptr(),
+        // Window creation marshals names through a bounded buffer. Assign long
+        // repository documents only after the EDIT has been created.
+        wide(if class == "EDIT" { "" } else { text }).as_ptr(),
         WS_CHILD | WS_VISIBLE | style,
         x * dpi / 96,
         y * dpi / 96,
@@ -3178,6 +3199,10 @@ unsafe fn modal_control(
         GetModuleHandleW(null()),
         null(),
     );
+    if class == "EDIT" && !control.is_null() && SetWindowTextW(control, wide(text).as_ptr()) == 0 {
+        DestroyWindow(control);
+        return null_mut();
+    }
     SendMessageW(control, WM_SETFONT, modal.font as usize, 1);
     if class == "COMBOBOX" {
         disable_combo_wheel(control);
@@ -3416,7 +3441,7 @@ unsafe fn service_selector(
 }
 unsafe fn preview(owner: HWND, font: HFONT, title: &str, text: &str, accept: Option<&str>) -> bool {
     let modal = modal_window(owner, font, title, 780, 540, false, false, false);
-    modal_control(
+    let body = modal_control(
         &modal,
         500,
         "EDIT",
@@ -3427,6 +3452,17 @@ unsafe fn preview(owner: HWND, font: HFONT, title: &str, text: &str, accept: Opt
         730,
         420,
     );
+    if body.is_null() {
+        DestroyWindow(modal.hwnd);
+        EnableWindow(owner, 1);
+        MessageBoxW(
+            owner,
+            wide("无法显示预览正文，操作已取消。").as_ptr(),
+            wide(title).as_ptr(),
+            MB_OK | MB_ICONERROR,
+        );
+        return false;
+    }
     modal_control(
         &modal,
         1,

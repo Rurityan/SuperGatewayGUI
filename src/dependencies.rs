@@ -29,6 +29,10 @@ pub struct ServiceDependency {
     pub package: String,
     pub version: String,
     pub entry: String,
+    #[serde(
+        deserialize_with = "crate::arguments::deserialize",
+        serialize_with = "crate::arguments::serialize"
+    )]
     pub args: Vec<String>,
     pub node: String,
     pub uv: String,
@@ -356,7 +360,9 @@ pub fn check_installation(root: &Path, p: &Profile) -> Result<()> {
 }
 pub fn prepared(root: &Path, p: &Profile) -> Result<Profile> {
     if !p.managed || p.source != "local" {
-        return Ok(p.clone());
+        let mut result = p.clone();
+        crate::arguments::normalize(&mut result.args);
+        return Ok(result);
     }
     let mut result = p.clone();
     let mut env = environment(root, &p.dependency, &Network::default(), false)?;
@@ -376,6 +382,7 @@ pub fn prepared(root: &Path, p: &Profile) -> Result<Profile> {
             r.args
         };
         result.args.extend(p.dependency.args.clone());
+        crate::arguments::normalize(&mut result.args);
         if !Path::new(&result.command).is_file() {
             return Err("托管启动入口缺失，请重新安装依赖".into());
         }

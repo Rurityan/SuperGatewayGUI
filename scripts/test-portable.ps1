@@ -18,7 +18,8 @@ public static class PortableWindow {
  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h,out uint pid);
  [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern int GetClassName(IntPtr h,StringBuilder b,int n);
  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h,uint msg,UIntPtr w,IntPtr l);
- public static IntPtr Find(int target) {IntPtr result=IntPtr.Zero;EnumWindows((h,l)=>{uint pid;GetWindowThreadProcessId(h,out pid);var b=new StringBuilder(64);GetClassName(h,b,64);if(pid==target&&b.ToString()=="SGRustMain"){result=h;return false;}return true;},IntPtr.Zero);return result;}
+ public static IntPtr Find(int target) {return FindClass(target,"SGRustMain");}
+ public static IntPtr FindClass(int target,string name) {IntPtr result=IntPtr.Zero;EnumWindows((h,l)=>{uint pid;GetWindowThreadProcessId(h,out pid);var b=new StringBuilder(64);GetClassName(h,b,64);if(pid==target&&b.ToString()==name){result=h;return false;}return true;},IntPtr.Zero);return result;}
 }
 '@
     foreach ($attempt in @(1,2)) {
@@ -43,6 +44,14 @@ public static class PortableWindow {
             $h=[PortableWindow]::Find($gui.Id)
             if ($h -eq [IntPtr]::Zero) {throw 'Portable main window not found'}
             $null=[PortableWindow]::PostMessage($h,0x111,[UIntPtr]17,[IntPtr]::Zero)
+            $deadline=[DateTime]::UtcNow.AddSeconds(10)
+            $confirm=[IntPtr]::Zero
+            while ($confirm -eq [IntPtr]::Zero -and [DateTime]::UtcNow -lt $deadline -and !$gui.HasExited) {
+                $confirm=[PortableWindow]::FindClass($gui.Id,'#32770')
+                if ($confirm -eq [IntPtr]::Zero) {Start-Sleep -Milliseconds 50}
+            }
+            if ($confirm -eq [IntPtr]::Zero) {throw 'Running portable MCP exit confirmation missing'}
+            $null=[PortableWindow]::PostMessage($confirm,0x111,[UIntPtr]6,[IntPtr]::Zero)
             if (!$gui.WaitForExit(20000) -or $gui.ExitCode -ne 0) {throw 'Portable GUI normal exit failed'}
             foreach ($id in @($engines.ProcessId)+@($mcp.ProcessId)) {if (Get-Process -Id $id -ErrorAction SilentlyContinue) {throw "Portable child remains: $id"}}
             Write-Host "PASS Chinese/spaced portable path, empty PATH, initialized MCP, normal tree cleanup, launch $attempt"

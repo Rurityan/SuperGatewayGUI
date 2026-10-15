@@ -2,6 +2,25 @@
 use super::*;
 const SS_ETCHEDHORZ: u32 = 0x10;
 
+unsafe extern "system" fn edit_proc(
+    hwnd: HWND,
+    msg: u32,
+    w: WPARAM,
+    l: LPARAM,
+    id: usize,
+    _: usize,
+) -> LRESULT {
+    if msg == WM_PASTE {
+        if let Ok(value) = clipboard_read(hwnd) {
+            SendMessageW(hwnd, EM_REPLACESEL, 1, wide(value.trim()).as_ptr() as isize);
+            return 0;
+        }
+    } else if msg == WM_NCDESTROY {
+        RemoveWindowSubclass(hwnd, Some(edit_proc), id);
+    }
+    DefSubclassProc(hwnd, msg, w, l)
+}
+
 pub(super) struct Editor {
     rows: Vec<Vec<HWND>>,
     first: usize,
@@ -96,6 +115,7 @@ unsafe fn rebuild(modal: &mut Modal, args: &[String]) {
         EnableWindow(row[3], (i + 1 < args.len()) as i32);
         // The edit control's default 32767-character limit must not truncate a saved value.
         SendMessageW(row[1], EM_SETLIMITTEXT, 0x7ffffffe, 0);
+        SetWindowSubclass(row[1], Some(edit_proc), 1, 0);
         modal.arguments.as_mut().unwrap().rows.push(row);
     }
     layout(modal);
@@ -166,6 +186,15 @@ pub(super) unsafe fn procedure(modal: &mut Modal, msg: u32, w: WPARAM, l: LPARAM
             let id = (w & 0xffff) as i32;
             if id == 1 {
                 modal.values = values(modal);
+                let changed = gateway::arguments::normalize(&mut modal.values);
+                if changed != 0 {
+                    MessageBoxW(
+                        modal.hwnd,
+                        wide(format!("已自动清理 {changed} 项参数首尾的空格、换行等空白。\r\n参数内部的空格及空参数保持不变。")).as_ptr(),
+                        wide("参数已整理").as_ptr(),
+                        MB_OK | MB_ICONINFORMATION,
+                    );
+                }
                 modal.result = Some(true);
                 DestroyWindow(modal.hwnd);
             } else if id == 2 {
@@ -333,7 +362,7 @@ pub(super) unsafe fn show(
         if one_shot {
             "仅填写临时参数，不填 uvx / npx 或包名；下一步预览，不写入服务参数。"
         } else {
-            "每项一个输入框，无需额外加引号；保留空格、引号及空参数。"
+            "每项一个输入框，首尾空白自动清理；内部空格、引号及空参数保留。"
         },
         0,
         20,
@@ -356,7 +385,7 @@ pub(super) unsafe fn show(
         &modal,
         581,
         "STATIC",
-        "空输入框表示一个空参数；不需要时请删除该行。",
+        "自动清理首尾空白；内部空格保留。空参数不需要时请删除该行。",
         0,
         158,
         54,

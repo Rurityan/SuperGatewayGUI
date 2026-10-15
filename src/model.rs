@@ -41,6 +41,10 @@ pub struct Profile {
     pub name: String,
     pub source: String,
     pub command: String,
+    #[serde(
+        deserialize_with = "crate::arguments::deserialize",
+        serialize_with = "crate::arguments::serialize"
+    )]
     pub args: Vec<String>,
     pub stdio: String,
     pub cwd: String,

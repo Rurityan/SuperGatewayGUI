@@ -59,14 +59,19 @@ fn one_off_args_are_exact_and_do_not_change_service_or_run_shell() {
         let (root, p) = fixture(kind);
         let path = std::env::var_os("PATH");
         let args = vec![
-            "setup".into(),
+            " \r\nsetup\t ".into(),
             "中文 空格".into(),
             "&echo %PATH% $(whoami)".into(),
             "".into(),
             "a\"b\\".into(),
         ];
         let invocation = oneshot::prepare(&root, &p, &Default::default(), args.clone()).unwrap();
-        assert_eq!(&invocation.args[invocation.args.len() - args.len()..], args);
+        let mut expected = args.clone();
+        gateway::arguments::normalize(&mut expected);
+        assert_eq!(
+            &invocation.args[invocation.args.len() - args.len()..],
+            expected
+        );
         assert!(invocation.executable.is_absolute());
         assert!(
             !invocation

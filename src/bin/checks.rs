@@ -194,6 +194,9 @@ fn run() -> Result<()> {
     let record = root.join("子进程.txt");
     for transport in ["streamableHttp", "sse", "ws"] {
         let mut p = make(&mut profiles, transport)?;
+        for arg in &mut p.args {
+            *arg = format!(" \t{arg}\r\n ");
+        }
         p.env = vec![Pair {
             key: "RECORD_FILE".into(),
             value: record.to_string_lossy().into_owned(),
@@ -354,7 +357,7 @@ fn run() -> Result<()> {
     let arguments: Vec<String> = serde_json::from_str(first).unwrap();
     check(
         arguments == vec!["中文 参数", "quote\"inside", "", "ends\\"],
-        "Chinese/spaced/quoted/empty arguments and cwd",
+        "trim boundary whitespace; preserve Chinese/inner spaces/quotes/empty arguments and cwd",
     )?;
     thread::sleep(Duration::from_millis(100));
     check(

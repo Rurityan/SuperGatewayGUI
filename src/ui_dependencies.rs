@@ -123,6 +123,7 @@ unsafe fn spec(modal: &Modal, mut p: Profile) -> Result<Profile> {
     p.dependency.version = text(hwnd, 622).trim().into();
     p.dependency.entry = text(hwnd, 623).trim().into();
     p.dependency.args = modal.dependency.as_ref().unwrap().arguments.clone();
+    gateway::arguments::normalize(&mut p.dependency.args);
     p.managed = SendMessageW(GetDlgItem(hwnd, 625), BM_GETCHECK, 0, 0) == BST_CHECKED as isize;
     if p.managed && p.stdio.is_empty() {
         deps::validate_spec(&p.dependency).map_err(|error| {

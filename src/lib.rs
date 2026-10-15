@@ -1,3 +1,4 @@
+pub mod arguments;
 pub mod client;
 pub mod config;
 pub mod dependencies;

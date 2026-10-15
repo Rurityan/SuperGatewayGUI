@@ -141,8 +141,14 @@ pub fn request(
             0,
         )
     })?;
-    unsafe {
-        WinHttpSetTimeouts(session.raw(), 15000, 15000, 15000, 15000);
+    // Non-streaming models can spend most of the total budget before sending
+    // response headers. The watchdog still enforces the shared absolute deadline.
+    let receive_ms = deadline
+        .saturating_duration_since(Instant::now())
+        .as_millis()
+        .clamp(1, i32::MAX as u128) as i32;
+    if unsafe { WinHttpSetTimeouts(session.raw(), 15000, 15000, 15000, receive_ms) } == 0 {
+        return Err(crate::native::error("设置 AI 网络超时"));
     }
     let connection =
         Handle::new(unsafe { WinHttpConnect(session.raw(), wide(&u.host).as_ptr(), u.port, 0) })?;
@@ -608,8 +614,14 @@ impl Proposal {
             .find('{')
             .ok_or("AI 未返回配置 JSON，请补充资料后重新生成")?;
         let end = text.rfind('}').ok_or("AI 返回 JSON 不完整")?;
-        let p: Self = serde_json::from_str(&text[start..=end])
+        let mut p: Self = serde_json::from_str(&text[start..=end])
             .map_err(|_| "AI 方案字段或 JSON 格式无效，请重新生成")?;
+        for arg in &mut p.arguments {
+            arg.value = arg.value.trim().to_owned();
+        }
+        for step in &mut p.setup {
+            crate::arguments::normalize(&mut step.args);
+        }
         p.validate()?;
         Ok(p)
     }
@@ -882,7 +894,11 @@ pub fn apply(
         }
     }
     if selection.arguments {
-        let args = p.arguments.iter().map(|a| a.value.clone()).collect();
+        let args = p
+            .arguments
+            .iter()
+            .map(|a| a.value.trim().to_owned())
+            .collect();
         if p.kind == "external" {
             draft.args = args;
         } else {

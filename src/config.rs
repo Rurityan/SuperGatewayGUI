@@ -513,6 +513,7 @@ pub fn import(text: &str, existing: &[Profile]) -> Result<Import> {
             }
             if let Some(v) = get("args") {
                 p.args = strings(v)?;
+                crate::arguments::normalize(&mut p.args);
             }
             if let Some(v) = get("apiKey") {
                 p.api_keys = if let Some(s) = v.as_str() {

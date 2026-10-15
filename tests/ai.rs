@@ -99,6 +99,28 @@ fn completion_protocol_and_response_redaction() {
     assert_eq!(mock.requests.lock().unwrap().len(), 1);
 }
 #[test]
+fn completion_waits_past_fifteen_seconds_without_retry() {
+    let mock = Mock::new(|_| {
+        thread::sleep(Duration::from_secs(16));
+        (
+            200,
+            serde_json::to_vec(&json!({"choices":[{"message":{"content":"OK"}}]})).unwrap(),
+        )
+    });
+    let start = Instant::now();
+    let result = ai::completion(
+        &settings(&mock.url),
+        &Network::default(),
+        &Task::default(),
+        json!([]),
+    )
+    .unwrap();
+    assert_eq!(result, "OK");
+    assert!(start.elapsed() >= Duration::from_secs(16));
+    assert!(start.elapsed() < Duration::from_secs(30));
+    assert_eq!(mock.requests.lock().unwrap().len(), 1);
+}
+#[test]
 fn api_errors_never_echo_body_or_retry() {
     for status in [401, 403, 404, 407, 429, 500, 302] {
         let mock = Mock::new(move |_| (status, b"private-test-ai-key server detail".to_vec()));

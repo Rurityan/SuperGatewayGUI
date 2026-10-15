@@ -75,6 +75,9 @@ impl Manager {
     pub fn is_running(&self, id: &str) -> bool {
         self.processes.lock().unwrap().contains_key(id)
     }
+    pub fn running_count(&self) -> usize {
+        self.processes.lock().unwrap().len()
+    }
     pub fn active(&self, p: &Profile) -> Profile {
         self.processes
             .lock()
