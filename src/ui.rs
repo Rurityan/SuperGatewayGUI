@@ -29,6 +29,8 @@ use windows_sys::Win32::{
     },
     UI::{Controls::*, HiDpi::*, Input::KeyboardAndMouse::*, Shell::*, WindowsAndMessaging::*},
 };
+#[path = "ui_arguments.rs"]
+mod argument_ui;
 #[path = "ui_dependencies.rs"]
 mod dependency_ui;
 const CF_UNICODETEXT: u32 = 13;
@@ -907,7 +909,31 @@ impl App {
         );
         self.label_edit(COMMAND, "程序名或路径", 88, 30, 0, 1, false);
         self.field(113, "BUTTON", "浏览…", WS_TABSTOP, -92, 88, 78, 30, 0, 1);
-        self.label_edit(ARGS, "参数（逐行）", 128, 60, 0, 1, false);
+        self.field(ARGS + 1000, "STATIC", "启动参数", 0, 12, 134, 126, 24, 0, 1);
+        self.field(
+            ARGS,
+            "EDIT",
+            "",
+            ES_MULTILINE as u32 | ES_READONLY as u32 | WS_VSCROLL | WS_TABSTOP,
+            144,
+            128,
+            -110,
+            60,
+            0,
+            1,
+        );
+        self.field(
+            160,
+            "BUTTON",
+            "编辑参数…",
+            WS_TABSTOP,
+            -100,
+            128,
+            86,
+            30,
+            0,
+            1,
+        );
         self.label_edit(CWD, "工作目录", 198, 30, 0, 1, false);
         self.field(114, "BUTTON", "目录…", WS_TABSTOP, -92, 198, 78, 30, 0, 1);
         self.label_edit(STDIO, "完整启动命令", 238, 56, 0, 1, false);
@@ -1323,7 +1349,7 @@ impl App {
         let source = self.combo_index(SOURCE);
         let original = self.combo_index(MANAGED) != 1 || !self.text(STDIO).trim().is_empty();
         self.dependency_summary();
-        for id in [COMMAND, ARGS, 113] {
+        for id in [COMMAND, ARGS, 113, 160] {
             EnableWindow(self.ctrl(id), original as i32);
         }
         let max = if self.page == 3 {
@@ -1551,7 +1577,7 @@ impl App {
             },
         );
         self.set(COMMAND, &p.command);
-        self.set(ARGS, &p.args.join("\r\n"));
+        self.set(ARGS, &argument_ui::summary(&p.args));
         self.set(CWD, &p.cwd);
         self.set(STDIO, &p.stdio);
         self.check_set(INHERIT_ENV, p.inherit_environment);
@@ -1643,12 +1669,6 @@ impl App {
         }
         .into();
         p.command = self.text(COMMAND).trim().trim_matches('"').into();
-        let args = self.text(ARGS).replace('\r', "");
-        p.args = if args.is_empty() {
-            vec![]
-        } else {
-            args.split('\n').map(str::to_owned).collect()
-        };
         p.cwd = self.text(CWD).trim().into();
         p.stdio = self.text(STDIO).trim().into();
         p.managed = self.combo_index(MANAGED) == 1;
@@ -2382,6 +2402,18 @@ impl App {
                 let text = gateway::environment::preview(&self.store.root, &p)?;
                 preview(self.hwnd, self.font, "服务环境预览 · 值隐藏", &text, None);
             }
+            160 => {
+                if let Some(args) = argument_ui::show(
+                    self.hwnd,
+                    self.font,
+                    "编辑服务启动参数",
+                    &self.draft.args,
+                    false,
+                ) {
+                    self.draft.args = args;
+                    self.set(ARGS, &argument_ui::summary(&self.draft.args));
+                }
+            }
             LIST if code == LBN_SELCHANGE => {
                 let index = SendMessageW(self.ctrl(LIST), LB_GETCURSEL, 0, 0);
                 if index >= 0 && Some(index as usize) != self.selected {
@@ -2712,7 +2744,7 @@ struct Modal {
     help: bool,
     dependency: Option<Box<dependency_ui::Dialog>>,
     storage: bool,
-    one_shot: bool,
+    arguments: Option<Box<argument_ui::Editor>>,
     service_count: Option<usize>,
     hide_content: bool,
     hidden_value: bool,
@@ -2728,6 +2760,25 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
     let data = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut Modal;
     if data.is_null() {
         return DefWindowProcW(hwnd, msg, w, l);
+    }
+    if (*data).arguments.is_some()
+        && [
+            WM_COMMAND,
+            WM_CLOSE,
+            WM_SIZE,
+            WM_DPICHANGED,
+            WM_GETMINMAXINFO,
+            WM_VSCROLL,
+            WM_MOUSEWHEEL,
+        ]
+        .contains(&msg)
+    {
+        if (*data).dispatching.replace(true) {
+            return 0;
+        }
+        let result = argument_ui::procedure(&mut *data, msg, w, l);
+        (*data).dispatching.set(false);
+        return result;
     }
     if (*data).dependency.is_some()
         && [
@@ -2833,12 +2884,6 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                             );
                             return 0;
                         }
-                    }
-                    if modal.one_shot {
-                        let control = GetDlgItem(hwnd, 500);
-                        let mut value = vec![0u16; GetWindowTextLengthW(control) as usize + 1];
-                        GetWindowTextW(control, value.as_mut_ptr(), value.len() as i32);
-                        modal.values = vec![String::from_utf16_lossy(&value[..value.len() - 1])];
                     }
                     if modal.storage {
                         modal.values = [550, 551]
@@ -3002,7 +3047,7 @@ unsafe fn modal_window(
         help: false,
         dependency: None,
         storage: false,
-        one_shot: false,
+        arguments: None,
         service_count: None,
         hide_content: false,
         hidden_value: false,
@@ -3481,62 +3526,7 @@ enum SettingsAction {
     Certificate(i32),
 }
 unsafe fn one_shot_arguments(owner: HWND, font: HFONT) -> Option<Vec<String>> {
-    let mut modal = modal_window(owner, font, "一次性命令参数", 700, 390, false, false, false);
-    modal.one_shot = true;
-    modal_control(
-        &modal,
-        501,
-        "STATIC",
-        "填写传给已安装包的参数，每行一项，例如 setup 或 install-addon。\r\n不填写 uvx / npx 和包名；不作为服务启动参数保存。",
-        0,
-        24,
-        16,
-        640,
-        52,
-    );
-    modal_control(
-        &modal,
-        500,
-        "EDIT",
-        "",
-        WS_TABSTOP | ES_MULTILINE as u32 | ES_AUTOVSCROLL as u32 | WS_VSCROLL,
-        24,
-        80,
-        640,
-        160,
-    );
-    modal_control(
-        &modal,
-        502,
-        "STATIC",
-        "下一步预览实际命令；确认后打开可交互终端。\r\n向导可能联网、修改客户端配置或安装插件，由你在终端中选择。",
-        0,
-        24,
-        250,
-        640,
-        52,
-    );
-    modal_control(
-        &modal,
-        1,
-        "BUTTON",
-        "预览命令",
-        WS_TABSTOP | BS_DEFPUSHBUTTON as u32,
-        440,
-        310,
-        106,
-        32,
-    );
-    modal_control(&modal, 2, "BUTTON", "取消", WS_TABSTOP, 558, 310, 106, 32);
-    modal_loop(owner, modal.hwnd);
-    (modal.result == Some(true)).then(|| {
-        let text = modal.values[0].replace('\r', "");
-        if text.is_empty() {
-            vec![]
-        } else {
-            text.split('\n').map(str::to_owned).collect()
-        }
-    })
+    argument_ui::show(owner, font, "一次性命令参数", &[], true)
 }
 unsafe fn directories_dialog(
     owner: HWND,

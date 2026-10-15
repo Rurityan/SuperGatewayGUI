@@ -538,12 +538,15 @@ unsafe fn dependency_acceptance(store: &Store, pid: u32) -> Result<()> {
         arguments = owned_dialog(pid, "一次性命令参数");
         !arguments.is_null() && IsWindowVisible(arguments) != 0
     })?;
-    SendMessageW(
-        GetDlgItem(arguments, 500),
-        WM_SETTEXT,
-        0,
-        wide("setup\r\n中文 参数").as_ptr() as isize,
-    );
+    for (index, value) in ["setup", "中文 参数"].iter().enumerate() {
+        SendMessageW(arguments, WM_COMMAND, 580, 0);
+        SendMessageW(
+            GetDlgItem(arguments, 7001 + index as i32 * 8),
+            WM_SETTEXT,
+            0,
+            wide(value).as_ptr() as isize,
+        );
+    }
     PostMessageW(arguments, WM_COMMAND, 1, 0);
     let mut one_preview = null_mut();
     wait(|| {
@@ -1516,12 +1519,98 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
     SendMessageW(control(101), CB_SETCURSEL, 0, 0);
     PostMessageW(h, WM_COMMAND, 101 | ((CBN_SELCHANGE as usize) << 16), 0);
     SendMessageW(control(102), WM_SETTEXT, 0, wide("npx").as_ptr() as isize);
-    SendMessageW(
-        control(103),
-        WM_SETTEXT,
+    action(160);
+    let arguments = ready_dialog(pid, h, "编辑服务启动参数")?;
+    for (index, value) in ["fixture-only-package", "-y", "", "中文 路径与\"引号\""]
+        .iter()
+        .enumerate()
+    {
+        SendMessageW(arguments, WM_COMMAND, 580, 0);
+        SendMessageW(
+            GetDlgItem(arguments, 7001 + index as i32 * 8),
+            WM_SETTEXT,
+            0,
+            wide(value).as_ptr() as isize,
+        );
+    }
+    check(
+        GetWindowLongPtrW(GetDlgItem(arguments, 7001), GWL_STYLE) & ES_MULTILINE as isize == 0,
+        "arguments use independent single-line edit controls",
+    )?;
+    check(
+        GetWindowLongPtrW(GetDlgItem(arguments, 7005), GWL_STYLE) & 0x1f == 0x10,
+        "argument rows have native horizontal separators",
+    )?;
+    SendMessageW(arguments, WM_COMMAND, 7010, 0);
+    SendMessageW(arguments, WM_COMMAND, 7020, 0);
+    PostMessageW(arguments, WM_COMMAND, 1, 0);
+    wait(|| IsWindow(arguments) == 0)?;
+    action(30);
+    check(
+        store.load()?.services[0].args == ["-y", "fixture-only-package", "中文 路径与\"引号\""],
+        "argument move/delete preserve ordering, Chinese, spaces and quotes",
+    )?;
+    action(160);
+    let arguments = ready_dialog(pid, h, "编辑服务启动参数")?;
+    SendMessageW(arguments, WM_COMMAND, 580, 0);
+    PostMessageW(arguments, WM_COMMAND, 1, 0);
+    wait(|| IsWindow(arguments) == 0)?;
+    action(30);
+    check(
+        store.load()?.services[0]
+            .args
+            .last()
+            .is_some_and(String::is_empty),
+        "a blank argument row persists as one empty argument",
+    )?;
+    action(160);
+    let arguments = ready_dialog(pid, h, "编辑服务启动参数")?;
+    for _ in 0..14 {
+        SendMessageW(arguments, WM_COMMAND, 580, 0);
+    }
+    let mut scrollbar = SCROLLINFO {
+        cbSize: std::mem::size_of::<SCROLLINFO>() as u32,
+        fMask: SIF_ALL,
+        ..std::mem::zeroed()
+    };
+    GetScrollInfo(arguments, SB_VERT, &mut scrollbar);
+    check(
+        scrollbar.nMax >= 17 && scrollbar.nPos > 0,
+        "long argument lists scroll to newly added row",
+    )?;
+    SendMessageW(arguments, WM_VSCROLL, SB_TOP as usize, 0);
+    check(
+        IsWindowVisible(GetDlgItem(arguments, 7001)) != 0,
+        "argument scrollbar returns to first row",
+    )?;
+    let dpi = GetDpiForWindow(arguments) as i32;
+    SetWindowPos(
+        arguments,
+        null_mut(),
         0,
-        wide("-y\r\nfixture-only-package").as_ptr() as isize,
+        0,
+        680 * dpi / 96,
+        390 * dpi / 96,
+        SWP_NOMOVE | SWP_NOZORDER,
     );
+    check(
+        repaint_is_clean(arguments)?,
+        "resized argument editor has no stale pixels",
+    )?;
+    PostMessageW(arguments, WM_COMMAND, 2, 0);
+    wait(|| IsWindow(arguments) == 0)?;
+    action(30);
+    check(
+        store.load()?.services[0].args.len() == 4,
+        "cancelled argument editor leaves saved arguments unchanged",
+    )?;
+    // Restore the simple npx fixture for the following managed conversion checks.
+    action(160);
+    let arguments = ready_dialog(pid, h, "编辑服务启动参数")?;
+    SendMessageW(arguments, WM_COMMAND, 7028, 0);
+    SendMessageW(arguments, WM_COMMAND, 7020, 0);
+    PostMessageW(arguments, WM_COMMAND, 1, 0);
+    wait(|| IsWindow(arguments) == 0)?;
     action(30);
     action(145);
     let deps_window = ready_dialog(pid, h, "运行环境与 MCP 依赖 · 不修改系统环境")?;
@@ -1587,6 +1676,19 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
         BST_CHECKED as usize,
         0,
     );
+    PostMessageW(deps_window, WM_COMMAND, 632, 0);
+    let package_arguments = ready_dialog(pid, deps_window, "编辑托管包启动参数")?;
+    for (i, value) in ["--browser", "msedge", "--isolated"].iter().enumerate() {
+        SendMessageW(package_arguments, WM_COMMAND, 580, 0);
+        SendMessageW(
+            GetDlgItem(package_arguments, 7001 + i as i32 * 8),
+            WM_SETTEXT,
+            0,
+            wide(value).as_ptr() as isize,
+        );
+    }
+    PostMessageW(package_arguments, WM_COMMAND, 1, 0);
+    wait(|| IsWindow(package_arguments) == 0)?;
     PostMessageW(deps_window, WM_COMMAND, 1, 0);
     thread::sleep(Duration::from_millis(200));
     let popup = GetLastActivePopup(deps_window);
@@ -1643,6 +1745,10 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
         "managed configuration saves without executing or installing",
     )?;
     check(
+        store.load()?.services[0].dependency.args == ["--browser", "msedge", "--isolated"],
+        "managed package row parameters persist independently",
+    )?;
+    check(
         IsWindowEnabled(control(102)) == 0 && IsWindowEnabled(control(103)) == 0,
         "managed mode disables preserved original command and arguments",
     )?;
@@ -1654,6 +1760,13 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
     action(145);
     let deps_window = ready_dialog(pid, h, "运行环境与 MCP 依赖 · 不修改系统环境")?;
     SendMessageW(GetDlgItem(deps_window, 620), CB_SETCURSEL, 1, 0);
+    PostMessageW(deps_window, WM_COMMAND, 632, 0);
+    let package_arguments = ready_dialog(pid, deps_window, "编辑托管包启动参数")?;
+    for _ in 0..3 {
+        SendMessageW(package_arguments, WM_COMMAND, 7004, 0);
+    }
+    PostMessageW(package_arguments, WM_COMMAND, 1, 0);
+    wait(|| IsWindow(package_arguments) == 0)?;
     SendMessageW(
         GetDlgItem(deps_window, 621),
         WM_SETTEXT,

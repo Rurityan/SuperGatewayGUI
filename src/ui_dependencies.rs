@@ -10,6 +10,7 @@ pub(super) struct Dialog {
     profiles: Vec<Profile>,
     network: Network,
     profile: Option<Profile>,
+    arguments: Vec<String>,
     rx: Option<mpsc::Receiver<Update>>,
     worker: Option<thread::JoinHandle<()>>,
     logs: VecDeque<String>,
@@ -110,7 +111,8 @@ unsafe fn network(hwnd: HWND) -> Result<Network> {
     n.validate()?;
     Ok(n)
 }
-unsafe fn spec(hwnd: HWND, mut p: Profile) -> Result<Profile> {
+unsafe fn spec(modal: &Modal, mut p: Profile) -> Result<Profile> {
+    let hwnd = modal.hwnd;
     p.dependency.kind = if SendMessageW(GetDlgItem(hwnd, 620), CB_GETCURSEL, 0, 0) == 1 {
         "python"
     } else {
@@ -120,12 +122,7 @@ unsafe fn spec(hwnd: HWND, mut p: Profile) -> Result<Profile> {
     p.dependency.package = text(hwnd, 621).trim().into();
     p.dependency.version = text(hwnd, 622).trim().into();
     p.dependency.entry = text(hwnd, 623).trim().into();
-    let args = text(hwnd, 624).replace('\r', "");
-    p.dependency.args = if args.is_empty() {
-        vec![]
-    } else {
-        args.split('\n').map(str::to_owned).collect()
-    };
+    p.dependency.args = modal.dependency.as_ref().unwrap().arguments.clone();
     p.managed = SendMessageW(GetDlgItem(hwnd, 625), BM_GETCHECK, 0, 0) == BST_CHECKED as isize;
     if p.managed && p.stdio.is_empty() {
         deps::validate_spec(&p.dependency).map_err(|error| {
@@ -140,7 +137,7 @@ unsafe fn spec(hwnd: HWND, mut p: Profile) -> Result<Profile> {
 unsafe fn busy(modal: &Modal, busy: bool) {
     for id in [
         601, 602, 603, 604, 605, 610, 611, 612, 613, 614, 620, 621, 622, 623, 624, 625, 626, 627,
-        628, 631, 1,
+        628, 631, 632, 1,
     ] {
         EnableWindow(GetDlgItem(modal.hwnd, id), (!busy) as i32);
     }
@@ -171,7 +168,7 @@ unsafe fn launch(modal: &mut Modal, action: i32) -> Result<()> {
         .unwrap()
         .profile
         .clone()
-        .map(|p| spec(hwnd, p))
+        .map(|p| spec(modal, p))
         .transpose()?;
     let d = modal.dependency.as_mut().unwrap();
     if d.worker.is_some() {
@@ -268,10 +265,7 @@ unsafe fn launch(modal: &mut Modal, action: i32) -> Result<()> {
 }
 unsafe fn one_shot(modal: &Modal) -> Result<()> {
     let d = modal.dependency.as_ref().unwrap();
-    let p = spec(
-        modal.hwnd,
-        d.profile.clone().ok_or("请从服务的依赖管理进入")?,
-    )?;
+    let p = spec(modal, d.profile.clone().ok_or("请从服务的依赖管理进入")?)?;
     let n = network(modal.hwnd)?;
     // Check installation before opening an argument editor; no automatic install.
     gateway::oneshot::prepare(&d.root, &p, &n, vec![])?;
@@ -409,7 +403,7 @@ pub(super) unsafe fn procedure(modal: &mut Modal, msg: u32, w: WPARAM, l: LPARAM
                         }
                         busy(modal, false);
                         if modal.dependency.as_ref().unwrap().profile.is_none() {
-                            for id in (620..=628).chain([631]) {
+                            for id in (620..=628).chain([631, 632]) {
                                 EnableWindow(GetDlgItem(modal.hwnd, id), 0);
                             }
                         }
@@ -428,6 +422,22 @@ pub(super) unsafe fn procedure(modal: &mut Modal, msg: u32, w: WPARAM, l: LPARAM
                 match id {
                     611 | 612 | 613 | 626 | 628 => launch(modal, id)?,
                     631 => one_shot(modal)?,
+                    632 => {
+                        let d = modal.dependency.as_ref().unwrap();
+                        if d.profile.is_none() || d.worker.is_some() {
+                            return Ok(());
+                        }
+                        if let Some(args) = argument_ui::show(
+                            modal.hwnd,
+                            d.font,
+                            "编辑托管包启动参数",
+                            &d.arguments,
+                            false,
+                        ) {
+                            set(modal.hwnd, 624, &argument_ui::summary(&args));
+                            modal.dependency.as_mut().unwrap().arguments = args;
+                        }
+                    }
                     629 => modal
                         .dependency
                         .as_ref()
@@ -459,7 +469,8 @@ pub(super) unsafe fn procedure(modal: &mut Modal, msg: u32, w: WPARAM, l: LPARAM
                                     set(modal.hwnd, 621, &spec.package);
                                     set(modal.hwnd, 622, &spec.version);
                                     set(modal.hwnd, 623, &spec.entry);
-                                    set(modal.hwnd, 624, &spec.args.join("\r\n"));
+                                    set(modal.hwnd, 624, &argument_ui::summary(&spec.args));
+                                    d.arguments = spec.args.clone();
                                 }
                             } else {
                                 return Err("无法安全识别此命令，请手动填写包、版本和启动入口；原始命令不会执行。".into());
@@ -474,7 +485,7 @@ pub(super) unsafe fn procedure(modal: &mut Modal, msg: u32, w: WPARAM, l: LPARAM
                             .unwrap()
                             .profile
                             .clone()
-                            .map(|p| spec(modal.hwnd, p))
+                            .map(|p| spec(modal, p))
                             .transpose()?;
                         let d = modal.dependency.as_mut().unwrap();
                         d.profile = profile;
@@ -786,8 +797,8 @@ pub(super) unsafe fn show(
         &modal,
         624,
         "EDIT",
-        &d.args.join("\r\n"),
-        WS_TABSTOP | ES_MULTILINE as u32 | WS_VSCROLL,
+        &argument_ui::summary(&d.args),
+        WS_TABSTOP | ES_MULTILINE as u32 | ES_READONLY as u32 | WS_VSCROLL,
         490,
         454,
         445,
@@ -795,14 +806,14 @@ pub(super) unsafe fn show(
     );
     modal_control(
         &modal,
-        609,
-        "STATIC",
-        "启动参数：每行一个",
-        0,
+        632,
+        "BUTTON",
+        "编辑启动参数…",
+        WS_TABSTOP,
         720,
         544,
         215,
-        24,
+        30,
     );
     modal_control(
         &modal,
@@ -862,6 +873,7 @@ pub(super) unsafe fn show(
         profiles,
         network,
         profile,
+        arguments: d.args.clone(),
         rx: None,
         worker: None,
         logs: VecDeque::new(),
@@ -939,7 +951,7 @@ pub(super) unsafe fn show(
     layout(&modal);
     EnableWindow(GetDlgItem(modal.hwnd, 629), 0);
     if modal.dependency.as_ref().unwrap().profile.is_none() {
-        for id in (620..=628).chain([631]) {
+        for id in (620..=628).chain([631, 632]) {
             EnableWindow(GetDlgItem(modal.hwnd, id), 0);
         }
     }
