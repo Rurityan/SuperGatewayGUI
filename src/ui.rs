@@ -2510,9 +2510,8 @@ impl App {
                 }
                 Some(SettingsAction::Save(normal, admin, language)) => {
                     let old = self.settings.clone();
-                    if old.admin_login_startup && admin && !gateway::startup::is_elevated() {
-                        return Ok(());
-                    }
+                    let startup_changed =
+                        old.login_startup != normal || old.admin_login_startup != admin;
                     let mut settings = old.clone();
                     settings.login_startup = normal;
                     settings.admin_login_startup = admin;
@@ -2523,7 +2522,7 @@ impl App {
                         if old.admin_login_startup != admin && !gateway::startup::is_elevated() {
                             return Err("修改管理员登录启动必须先以管理员身份运行".into());
                         }
-                        if old.login_startup != normal || old.admin_login_startup != admin {
+                        if startup_changed {
                             gateway::startup::apply(
                                 old.admin_login_startup,
                                 normal,
@@ -2533,13 +2532,17 @@ impl App {
                             )?;
                         }
                         if let Err(error) = Store::new(root.clone())?.save(&settings) {
-                            let rollback = gateway::startup::apply(
-                                admin,
-                                old.login_startup,
-                                old.admin_login_startup,
-                                &root,
-                                custom,
-                            );
+                            let rollback = if startup_changed {
+                                gateway::startup::apply(
+                                    admin,
+                                    old.login_startup,
+                                    old.admin_login_startup,
+                                    &root,
+                                    custom,
+                                )
+                            } else {
+                                Ok(())
+                            };
                             return Err(format!(
                                 "保存配置失败：{error}；启动设置回退：{}",
                                 rollback.err().unwrap_or_else(|| "成功".into())

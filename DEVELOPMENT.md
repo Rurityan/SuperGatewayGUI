@@ -24,7 +24,7 @@
 
 `src/i18n.rs` 管理可选 `Settings.Language`（`system` / `zh-CN` / `en`）、Windows `GetUserDefaultUILanguage` 选择及文本匹配。旧配置默认 system，中文显示语言映射为简体中文，其余使用英文。`assets/locales/en.json` 是中文原文与英文的配对目录，通过 include_str 内置，不引入 GUI 或翻译运行时。新增翻译需保留格式占位符数量和顺序；名称、路径、程序、参数、变量与密钥不是翻译源，不可对输入值做全局替换。
 
-主窗口仅重新标注应用控件、下拉项和标签页，保留 EDIT 内容、服务状态和进程；后台 SettingsSaved 事件后应用语言。保存纯语言变更不更新登录任务。`src/help.rs` 按语言提供同样八章帮助；AI 请求只增加 response_language，不发送其他隐私数据，现有模型输出保留原文。Win32 系统按钮和第三方错误遵循各自语言。
+主窗口仅重新标注应用控件、下拉项和标签页，保留 EDIT 内容、服务状态和进程；后台 SettingsSaved 事件后应用语言。保存纯语言变更不更新登录任务；即使配置中已开启管理员登录启动，普通权限仍能保存语言。提权校验只针对管理员启动选项的实际变更，未变更启动设置时，保存失败也不调用启动任务回退。`src/help.rs` 按语言提供同样八章帮助；AI 请求只增加 response_language，不发送其他隐私数据，现有模型输出保留原文。Win32 系统按钮和第三方错误遵循各自语言。
 
 语言验证：`cargo test --release --locked --test language` 检查 DPAPI / 配置恢复 / 服务交换隔离；i18n 库测试覆盖系统语种映射、旧配置默认、目录重复 / 占位符和动态用户值保留。`desktop-checks language-ui <隔离配置目录> <GUI.exe> <mock-mcp.exe>` 验证两个真实测试 MCP 的即时切换、系统选择、中文路径、英文帮助 / AI 入口及重启恢复，已接入原生 UI 回归。不得对用户现有 GUI 或服务运行该隔离流程。
 

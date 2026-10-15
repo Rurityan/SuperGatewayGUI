@@ -15,7 +15,7 @@ Extract the complete portable ZIP and run `SuperGatewayGUI.exe`. The GUI and eng
 
 ## Language
 
-Open **Settings → Language**, choose **System**, **Simplified Chinese** or **English**, and save. The change is immediate and does not restart running gateways or MCP services. System uses the Windows display language: Chinese selects Simplified Chinese; other languages select English.
+Open **Settings → Language**, choose **System**, **Simplified Chinese** or **English**, and save. The change is immediate and does not restart running gateways or MCP services. Changing language does not require elevation, even when administrator login startup is enabled. System uses the Windows display language: Chinese selects Simplified Chinese; other languages select English.
 
 The optional global `Language` setting is stored in DPAPI-encrypted `settings.dat`. It persists across launches and is excluded from service exports. User names, command lines, paths, arguments, variables and keys remain unchanged. Original MCP logs, operating-system diagnostics and existing model replies retain their language. Eight offline help chapters are available in both languages.
 

@@ -24,6 +24,9 @@ pub(super) fn prepare(store: &Store) -> Result<http::Mock> {
         (200, br#"{"versions":{"1.2.3":{}}}"#.to_vec())
     });
     let mut settings = store.load()?;
+    // Preserve an existing preference without creating a real login task.
+    // Saving an unrelated language setting must also work without elevation.
+    settings.admin_login_startup = true;
     settings.ai = gateway::ai::AiSettings {
         base_url: format!("{}/v1", server.url),
         api_key: "local-language-test-key".into(),
@@ -82,6 +85,11 @@ unsafe fn main_window(pid: u32) -> Result<HWND> {
 unsafe fn choose(h: HWND, pid: u32, index: usize, title: &str) -> Result<()> {
     click(h, 16);
     let settings = ready_dialog(pid, h, title)?;
+    check(
+        SendMessageW(GetDlgItem(settings, 505), BM_GETCHECK, 0, 0) == BST_CHECKED as isize
+            && (gateway::startup::is_elevated() || IsWindowEnabled(GetDlgItem(settings, 505)) == 0),
+        "administrator startup remains checked and protected while changing language",
+    )?;
     let combo = GetDlgItem(settings, 518);
     check(
         !combo.is_null() && SendMessageW(combo, CB_GETCOUNT, 0, 0) == 3,
@@ -115,8 +123,10 @@ pub(super) unsafe fn run(store: &Store, pid: u32, exe: &std::path::Path) -> Resu
     choose(h, pid, 2, "应用设置")?;
     wait(|| value(GetDlgItem(h, 16)) == "Settings")?;
     check(
-        store.load()?.language == Language::English && store.load()?.services == profiles,
-        "language persists without changing any service configuration",
+        store.load()?.language == Language::English
+            && store.load()?.services == profiles
+            && store.load()?.admin_login_startup,
+        "language persists without changing services or existing administrator startup",
     )?;
     check(
         value(GetDlgItem(panel, 102)) == program_before
