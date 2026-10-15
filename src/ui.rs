@@ -29,6 +29,8 @@ use windows_sys::Win32::{
     },
     UI::{Controls::*, HiDpi::*, Input::KeyboardAndMouse::*, Shell::*, WindowsAndMessaging::*},
 };
+#[path = "ui_ai.rs"]
+mod ai_ui;
 #[path = "ui_arguments.rs"]
 mod argument_ui;
 #[path = "ui_dependencies.rs"]
@@ -979,6 +981,18 @@ impl App {
             0,
             1,
         );
+        self.field(
+            161,
+            "BUTTON",
+            "AI 安装向导…",
+            WS_TABSTOP,
+            414,
+            538,
+            -14,
+            32,
+            0,
+            1,
+        );
         self.label_edit(URL, "远程 MCP URL", 88, 30, 0, 2, false);
         self.label_edit(BEARER, "Bearer Token", 128, 30, 0, 2, true);
         self.combo(
@@ -1732,6 +1746,7 @@ impl App {
             self.settings.dependency_network.clone(),
             profile,
         );
+        self.settings.ai = self.store.load()?.ai;
         if let Some(network) = network {
             let previous = self.settings.dependency_network.clone();
             self.settings.dependency_network = network;
@@ -1741,8 +1756,10 @@ impl App {
             }
         }
         if let Some(profile) = profile {
-            self.draft.dependency = profile.dependency;
-            self.draft.managed = profile.managed;
+            self.set(COMMAND, &profile.command);
+            self.set(ARGS, &argument_ui::summary(&profile.args));
+            self.draft = profile.clone();
+            self.pair_lists();
             self.combo_set(MANAGED, if profile.managed { 1 } else { 0 });
             self.update_status();
             self.layout();
@@ -2304,6 +2321,17 @@ impl App {
                         self.storage_dialog()?;
                         return Ok(());
                     }
+                    if action == 517 {
+                        ai_ui::show(
+                            self.hwnd,
+                            self.font,
+                            self.store.root.clone(),
+                            self.settings.dependency_network.clone(),
+                            None,
+                        )?;
+                        self.settings.ai = self.store.load()?.ai;
+                        return Ok(());
+                    }
                     if action == 509 && self.message("将此本地 CA 加入当前用户的受信任根证书库？该 CA 可为本机/局域网 IP 签发证书。请确认是自己的 CA。", MB_YESNO | MB_ICONWARNING) != IDYES { return Ok(()); }
                     if action == 513 && self.message("重建 CA 会取消本机对旧 CA 的信任，并备份旧证书目录。所有客户端需重新导入新 CA。确定继续？", MB_YESNO | MB_ICONWARNING) != IDYES { return Ok(()); }
                     let destination = if action == 508 {
@@ -2373,6 +2401,33 @@ impl App {
             },
             17 => self.exit(),
             145 => self.dependencies_dialog(true)?,
+            161 => {
+                let profile = self.read()?;
+                if profile.source != "local" {
+                    return Err("请从本地服务进入 AI 安装向导".into());
+                }
+                let result = ai_ui::show(
+                    self.hwnd,
+                    self.font,
+                    self.store.root.clone(),
+                    self.settings.dependency_network.clone(),
+                    Some(profile),
+                );
+                self.settings.ai = self.store.load()?.ai;
+                if let Some(p) = result? {
+                    self.set(COMMAND, &p.command);
+                    self.set(ARGS, &argument_ui::summary(&p.args));
+                    self.combo_set(MANAGED, usize::from(p.managed) as i32);
+                    self.draft = p;
+                    self.pair_lists();
+                    self.update_status();
+                    self.layout();
+                    self.message(
+                        "方案已填入未保存草稿。请核对并保存，再手动安装依赖及启动服务。",
+                        MB_ICONINFORMATION,
+                    );
+                }
+            }
             154 => {
                 if let Some(path) = native::folder_dialog_title(
                     self.hwnd,
@@ -2745,6 +2800,7 @@ struct Modal {
     dependency: Option<Box<dependency_ui::Dialog>>,
     storage: bool,
     arguments: Option<Box<argument_ui::Editor>>,
+    ai: Option<Box<ai_ui::Dialog>>,
     service_count: Option<usize>,
     hide_content: bool,
     hidden_value: bool,
@@ -2760,6 +2816,24 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
     let data = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut Modal;
     if data.is_null() {
         return DefWindowProcW(hwnd, msg, w, l);
+    }
+    if (*data).ai.is_some()
+        && [
+            WM_COMMAND,
+            WM_TIMER,
+            WM_CLOSE,
+            WM_SIZE,
+            WM_DPICHANGED,
+            WM_GETMINMAXINFO,
+        ]
+        .contains(&msg)
+    {
+        if (*data).dispatching.replace(true) {
+            return 0;
+        }
+        let result = ai_ui::procedure(&mut *data, msg, w, l);
+        (*data).dispatching.set(false);
+        return result;
     }
     if (*data).arguments.is_some()
         && [
@@ -2978,7 +3052,7 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                     modal.result = Some(true);
                     DestroyWindow(hwnd);
                 }
-                id @ (507..=509 | 512 | 513 | 515 | 516) if modal.setting => {
+                id @ (507..=509 | 512 | 513 | 515 | 516 | 517) if modal.setting => {
                     modal.values = vec![id.to_string()];
                     modal.result = Some(true);
                     DestroyWindow(hwnd);
@@ -3048,6 +3122,7 @@ unsafe fn modal_window(
         dependency: None,
         storage: false,
         arguments: None,
+        ai: None,
         service_count: None,
         hide_content: false,
         hidden_value: false,
@@ -3718,8 +3793,19 @@ unsafe fn settings_dialog(
         0,
         24,
         220,
-        560,
+        450,
         58,
+    );
+    modal_control(
+        &modal,
+        517,
+        "BUTTON",
+        "AI 安装向导…",
+        WS_TABSTOP,
+        500,
+        224,
+        198,
+        34,
     );
     modal_control(
         &modal,

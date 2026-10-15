@@ -29,6 +29,8 @@ use windows_sys::Win32::{
     },
     System::{DataExchange::*, Memory::*},
 };
+#[path = "support/ai.rs"]
+mod ai_checks;
 unsafe fn icon_size(icon: HICON) -> Option<(i32, i32)> {
     let mut info = ICONINFO::default();
     if icon.is_null() || GetIconInfo(icon, &mut info) == 0 {
@@ -240,22 +242,28 @@ fn run() -> Result<()> {
         tls_support::untrust(&store.root)?;
         return Ok(());
     }
-    if mode == "prepare" || mode == "prepare-tls" {
+    if mode == "prepare" || mode == "prepare-tls" || mode == "prepare-portable" {
         let count: usize = args[3].parse().unwrap();
         let fixture = std::path::absolute(&args[4]).unwrap();
-        let services = (0..count)
-            .map(|i| Profile {
+        let mut services = vec![];
+        for i in 0..count {
+            let port = if mode == "prepare-portable" {
+                gateway::config::free_port(&services)?
+            } else {
+                18000 + i as u16
+            };
+            services.push(Profile {
                 name: format!("性能测试 {}", i + 1),
                 command: fixture.to_string_lossy().into(),
                 output: "ws".into(),
                 route: "/ws".into(),
-                port: 18000 + i as u16,
+                port,
                 tls: mode == "prepare-tls",
                 listen_address: Some("127.0.0.1".into()),
                 auto_start: true,
                 ..Default::default()
-            })
-            .collect();
+            });
+        }
         store.save(&Settings {
             services,
             ..Default::default()
@@ -330,9 +338,14 @@ fn run() -> Result<()> {
         let _ = child.wait();
         return result;
     }
-    if mode != "ui" && mode != "log-ui" && mode != "exchange-ui" {
+    if mode != "ui" && mode != "log-ui" && mode != "exchange-ui" && mode != "ai-ui" {
         return Err("unknown mode".into());
     }
+    let _ai_mock = if mode == "ai-ui" {
+        Some(ai_checks::prepare(&store)?)
+    } else {
+        None
+    };
     unsafe {
         let mut large = null_mut();
         let mut small = null_mut();
@@ -421,7 +434,9 @@ fn run() -> Result<()> {
         .spawn()
         .map_err(|e| e.to_string())?;
     let result = unsafe {
-        if mode == "exchange-ui" {
+        if mode == "ai-ui" {
+            ai_checks::run(&store, child.id(), _ai_mock.as_ref().unwrap())
+        } else if mode == "exchange-ui" {
             exchange_ui(&store, child.id())
         } else if mode == "log-ui" {
             log_ui(&store, child.id())
@@ -1975,8 +1990,8 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
     let topics = GetDlgItem(help, 504);
     let body = GetDlgItem(help, 500);
     check(
-        SendMessageW(topics, LB_GETCOUNT, 0, 0) == 7,
-        "help offers seven parameter and example chapters",
+        SendMessageW(topics, LB_GETCOUNT, 0, 0) == 8,
+        "help offers eight parameter and example chapters including AI wizard",
     )?;
     check(
         GetWindowLongPtrW(body, GWL_STYLE) & ES_READONLY as isize != 0,
@@ -1995,6 +2010,20 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
     check(
         content.contains("[mcp_servers.example]") && content.contains("mcpServers"),
         "chapter selection shows Codex TOML and JSON examples",
+    )?;
+    SendMessageW(topics, LB_SETCURSEL, 7, 0);
+    SendMessageW(help, WM_COMMAND, 504 | ((LBN_SELCHANGE as usize) << 16), 0);
+    let mut ai_content = vec![0u16; SendMessageW(body, WM_GETTEXTLENGTH, 0, 0) as usize + 1];
+    SendMessageW(
+        body,
+        WM_GETTEXT,
+        ai_content.len(),
+        ai_content.as_mut_ptr() as isize,
+    );
+    check(
+        String::from_utf16_lossy(&ai_content).contains("base_url")
+            && String::from_utf16_lossy(&ai_content).contains("未保存草稿"),
+        "embedded AI help explains API configuration and manual installation",
     )?;
     check(
         icon_size(SendMessageW(help, WM_GETICON, ICON_SMALL as usize, 0) as HICON).is_some(),

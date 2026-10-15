@@ -16,3 +16,4 @@ pub mod storage;
 pub mod store;
 pub mod tls;
 pub type Result<T> = std::result::Result<T, String>;
+pub mod ai;

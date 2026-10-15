@@ -137,7 +137,7 @@ unsafe fn spec(modal: &Modal, mut p: Profile) -> Result<Profile> {
 unsafe fn busy(modal: &Modal, busy: bool) {
     for id in [
         601, 602, 603, 604, 605, 610, 611, 612, 613, 614, 620, 621, 622, 623, 624, 625, 626, 627,
-        628, 631, 632, 1,
+        628, 631, 632, 633, 1,
     ] {
         EnableWindow(GetDlgItem(modal.hwnd, id), (!busy) as i32);
     }
@@ -403,7 +403,7 @@ pub(super) unsafe fn procedure(modal: &mut Modal, msg: u32, w: WPARAM, l: LPARAM
                         }
                         busy(modal, false);
                         if modal.dependency.as_ref().unwrap().profile.is_none() {
-                            for id in (620..=628).chain([631, 632]) {
+                            for id in (620..=628).chain([631, 632, 633]) {
                                 EnableWindow(GetDlgItem(modal.hwnd, id), 0);
                             }
                         }
@@ -420,6 +420,59 @@ pub(super) unsafe fn procedure(modal: &mut Modal, msg: u32, w: WPARAM, l: LPARAM
             }
             let result = (|| -> Result<()> {
                 match id {
+                    633 => {
+                        let d = modal.dependency.as_ref().unwrap();
+                        if d.worker.is_some() {
+                            return Ok(());
+                        }
+                        let mut p = d.profile.clone().ok_or("请从本地服务进入")?;
+                        // Unlike installation, AI must also work with an incomplete package form.
+                        p.managed = SendMessageW(GetDlgItem(modal.hwnd, 625), BM_GETCHECK, 0, 0)
+                            == BST_CHECKED as isize;
+                        p.dependency.kind =
+                            if SendMessageW(GetDlgItem(modal.hwnd, 620), CB_GETCURSEL, 0, 0) == 1 {
+                                "python"
+                            } else {
+                                "npm"
+                            }
+                            .into();
+                        p.dependency.package = text(modal.hwnd, 621).trim().into();
+                        p.dependency.version = text(modal.hwnd, 622).trim().into();
+                        p.dependency.entry = text(modal.hwnd, 623).trim().into();
+                        p.dependency.args = d.arguments.clone();
+                        let result = ai_ui::show(
+                            modal.hwnd,
+                            modal.font,
+                            d.root.clone(),
+                            network(modal.hwnd)?,
+                            Some(p),
+                        )?;
+                        if let Some(p) = result {
+                            SendMessageW(
+                                GetDlgItem(modal.hwnd, 620),
+                                CB_SETCURSEL,
+                                usize::from(p.dependency.kind == "python"),
+                                0,
+                            );
+                            SendMessageW(
+                                GetDlgItem(modal.hwnd, 625),
+                                BM_SETCHECK,
+                                if p.managed {
+                                    BST_CHECKED
+                                } else {
+                                    BST_UNCHECKED
+                                } as usize,
+                                0,
+                            );
+                            set(modal.hwnd, 621, &p.dependency.package);
+                            set(modal.hwnd, 622, &p.dependency.version);
+                            set(modal.hwnd, 623, &p.dependency.entry);
+                            set(modal.hwnd, 624, &argument_ui::summary(&p.dependency.args));
+                            let d = modal.dependency.as_mut().unwrap();
+                            d.arguments = p.dependency.args.clone();
+                            d.profile = Some(p);
+                        }
+                    }
                     611 | 612 | 613 | 626 | 628 => launch(modal, id)?,
                     631 => one_shot(modal)?,
                     632 => {
@@ -776,12 +829,23 @@ pub(super) unsafe fn show(
         &modal,
         625,
         "BUTTON",
-        "此服务使用应用管理的运行环境",
+        "使用应用管理的运行环境",
         WS_TABSTOP | BS_AUTOCHECKBOX as u32,
         18,
         454,
-        350,
+        270,
         28,
+    );
+    modal_control(
+        &modal,
+        633,
+        "BUTTON",
+        "AI 安装向导…",
+        WS_TABSTOP,
+        300,
+        454,
+        180,
+        30,
     );
     SendMessageW(
         managed,
@@ -951,7 +1015,7 @@ pub(super) unsafe fn show(
     layout(&modal);
     EnableWindow(GetDlgItem(modal.hwnd, 629), 0);
     if modal.dependency.as_ref().unwrap().profile.is_none() {
-        for id in (620..=628).chain([631, 632]) {
+        for id in (620..=628).chain([631, 632, 633]) {
             EnableWindow(GetDlgItem(modal.hwnd, id), 0);
         }
     }

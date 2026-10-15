@@ -8,7 +8,7 @@ try {
     Copy-Item "$Package/*" "$stage/app" -Recurse -Force
     $bin = "$root/target/x86_64-pc-windows-msvc/release"
     Copy-Item "$bin/mock-mcp.exe" "$stage/app/mock-mcp.exe"
-    & "$bin/desktop-checks.exe" prepare "$stage/data" 1 "$stage/app/mock-mcp.exe"
+    & "$bin/desktop-checks.exe" prepare-portable "$stage/data" 1 "$stage/app/mock-mcp.exe"
     if ($LASTEXITCODE -ne 0) { throw 'Portable settings preparation failed' }
     Add-Type @'
 using System;using System.Text;using System.Runtime.InteropServices;

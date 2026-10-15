@@ -1,0 +1,20 @@
+{
+  "kind": "npm",
+  "package": "fixture-ai-mcp",
+  "version": "1.2.3",
+  "entry": "fixture-ai-mcp",
+  "command": "",
+  "arguments": [
+    { "value": "--browser", "description": "选择浏览器" },
+    { "value": "msedge", "description": "使用已安装的 Edge" },
+    { "value": "中文 参数", "description": "保留单个参数中的空格" }
+  ],
+  "environment": [
+    { "name": "FIXTURE_API_KEY", "description": "在本机填写实际密钥", "required": true, "secret": true }
+  ],
+  "prerequisites": ["Node.js，安装由用户另行确认"],
+  "setup": [{ "args": ["setup"], "description": "仅作受控测试，不执行" }],
+  "sources": ["https://github.com/example/fixture"],
+  "uncertainties": ["测试方案，不是真实 MCP 包"],
+  "explanation": "受控安装建议，生成和填入均不安装或执行。"
+}

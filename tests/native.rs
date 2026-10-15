@@ -33,4 +33,12 @@ fn native_desktop_controls_and_tray() {
         .status()
         .expect("Launch Rust desktop checks");
     assert!(status.success(), "Native UI checks failed");
+    let data = std::env::temp_dir().join(format!("SGGUI AI 中文 UI {}", gateway::model::new_id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_desktop-checks"))
+        .arg("ai-ui")
+        .arg(data)
+        .arg(env!("CARGO_BIN_EXE_SuperGatewayGUI"))
+        .status()
+        .expect("Launch AI wizard UI checks");
+    assert!(status.success(), "AI wizard UI checks failed");
 }
