@@ -23,7 +23,7 @@ try {
     New-Item -ItemType Directory -Force "$publish/engine", "$publish/licenses" | Out-Null
     Copy-Item 'target/x86_64-pc-windows-msvc/release/SuperGatewayGUI.exe' $publish
     Copy-Item 'engine/supergateway.exe', 'engine/manifest.json', 'engine/LICENSE', 'engine/THIRD_PARTY_LICENSES.txt' "$publish/engine"
-    Copy-Item 'README.md', 'DEVELOPMENT.md', 'CHANGELOG.md', 'VALIDATION.md', 'DEPENDENCIES_VALIDATION.md', 'STORAGE_VALIDATION.md', 'ONESHOT_VALIDATION.md', 'ENVIRONMENT_VALIDATION.md', 'THIRD_PARTY_NOTICES.md', 'LICENSE' $publish
+    Copy-Item 'README.md', 'README.en.md', 'DEVELOPMENT.md', 'CHANGELOG.md', 'VALIDATION.md', 'DEPENDENCIES_VALIDATION.md', 'STORAGE_VALIDATION.md', 'ONESHOT_VALIDATION.md', 'ENVIRONMENT_VALIDATION.md', 'THIRD_PARTY_NOTICES.md', 'LICENSE' $publish
     $metadata = cargo metadata --locked --format-version 1 | ConvertFrom-Json
     if ($LASTEXITCODE -ne 0) { throw 'Cargo metadata failed' }
     $licenses = @()

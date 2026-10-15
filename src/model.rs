@@ -188,6 +188,7 @@ mod visibility_tests {
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct Settings {
+    pub language: crate::i18n::Language,
     pub ai: crate::ai::AiSettings,
     pub dependency_network: crate::dependencies::Network,
     pub login_startup: bool,

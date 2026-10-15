@@ -2,6 +2,7 @@
 mod help;
 mod ui;
 fn main() {
+    gateway::i18n::initialize(gateway::i18n::Language::System);
     // Retired exports must fail instead of accidentally opening another GUI.
     if std::env::args_os().any(|arg| arg == "--stdio-launch") {
         std::process::exit(1);
@@ -19,8 +20,9 @@ fn main() {
         unsafe {
             windows_sys::Win32::UI::WindowsAndMessaging::MessageBoxW(
                 std::ptr::null_mut(),
-                gateway::native::wide(error).as_ptr(),
-                gateway::native::wide("SuperGateway · 启动失败").as_ptr(),
+                gateway::native::wide(gateway::i18n::text(&error).as_ref()).as_ptr(),
+                gateway::native::wide(gateway::i18n::text("SuperGateway · 启动失败").as_ref())
+                    .as_ptr(),
                 0x10,
             );
         }

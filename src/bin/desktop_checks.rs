@@ -31,6 +31,8 @@ use windows_sys::Win32::{
 };
 #[path = "support/ai.rs"]
 mod ai_checks;
+#[path = "support/language.rs"]
+mod language_checks;
 unsafe fn icon_size(icon: HICON) -> Option<(i32, i32)> {
     let mut info = ICONINFO::default();
     if icon.is_null() || GetIconInfo(icon, &mut info) == 0 {
@@ -338,7 +340,12 @@ fn run() -> Result<()> {
         let _ = child.wait();
         return result;
     }
-    if mode != "ui" && mode != "log-ui" && mode != "exchange-ui" && mode != "ai-ui" {
+    if mode != "ui"
+        && mode != "log-ui"
+        && mode != "exchange-ui"
+        && mode != "ai-ui"
+        && mode != "language-ui"
+    {
         return Err("unknown mode".into());
     }
     let _ai_mock = if mode == "ai-ui" {
@@ -408,12 +415,20 @@ fn run() -> Result<()> {
             ..Default::default()
         })?;
     }
-    if mode == "log-ui" {
+    if mode == "log-ui" || mode == "language-ui" {
         let mut profiles = Vec::new();
+        let program = if mode == "language-ui" {
+            let path = store.root.join("中文 MCP 程序.exe");
+            std::fs::copy(args.get(4).ok_or("mock MCP executable missing")?, &path)
+                .map_err(|e| e.to_string())?;
+            path.to_string_lossy().into_owned()
+        } else {
+            args.get(4).ok_or("mock MCP executable missing")?.clone()
+        };
         for name in ["日志甲", "日志乙"] {
             let p = Profile {
                 name: name.into(),
-                command: args.get(4).ok_or("mock MCP executable missing")?.clone(),
+                command: program.clone(),
                 port: gateway::config::free_port(&profiles)?,
                 auto_start: true,
                 listen_address: Some("127.0.0.1".into()),
@@ -422,10 +437,16 @@ fn run() -> Result<()> {
             profiles.push(p);
         }
         store.save(&Settings {
+            language: gateway::i18n::Language::Chinese,
             services: profiles,
             ..Default::default()
         })?;
     }
+    let _language_mock = if mode == "language-ui" {
+        Some(language_checks::prepare(&store)?)
+    } else {
+        None
+    };
     let mut child = Command::new(&args[3])
         .args(["--data-dir", store.root.to_str().unwrap()])
         .env("PATH", "")
@@ -434,7 +455,9 @@ fn run() -> Result<()> {
         .spawn()
         .map_err(|e| e.to_string())?;
     let result = unsafe {
-        if mode == "ai-ui" {
+        if mode == "language-ui" {
+            language_checks::run(&store, child.id(), std::path::Path::new(&args[3]))
+        } else if mode == "ai-ui" {
             ai_checks::run(&store, child.id(), _ai_mock.as_ref().unwrap())
         } else if mode == "exchange-ui" {
             exchange_ui(&store, child.id())

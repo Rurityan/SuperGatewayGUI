@@ -180,7 +180,7 @@ pub fn preview(root: &std::path::Path, p: &Profile) -> Result<String> {
     let mut note = String::new();
     if p.managed {
         if let Err(error) = crate::dependencies::check_installation(root, p) {
-            note = format!("\r\n尚不能启动：{error}\r\n");
+            note = crate::i18n::format_text!("\r\n尚不能启动：{error}\r\n");
         }
         // Compute the same operational variables without creating directories.
         let mut operational = crate::dependencies::preview_environment(root, &p.dependency)?;
@@ -200,7 +200,7 @@ pub fn preview(root: &std::path::Path, p: &Profile) -> Result<String> {
             );
             operational.insert(
                 "PATH".into(),
-                format!(
+                crate::i18n::format_text!(
                     "{};{}",
                     dir.join("venv/Scripts").display(),
                     operational["PATH"]
@@ -209,7 +209,7 @@ pub fn preview(root: &std::path::Path, p: &Profile) -> Result<String> {
         }
         for (key, value) in operational {
             if p.env.iter().any(|e| e.key.eq_ignore_ascii_case(&key)) {
-                return Err(format!(
+                return Err(crate::i18n::format_text!(
                     "托管模式保留变量 {key}，请删除覆盖项；PATH 请使用附加程序目录。"
                 ));
             }
@@ -222,21 +222,21 @@ pub fn preview(root: &std::path::Path, p: &Profile) -> Result<String> {
         prepared.managed_runtime = true;
     }
     let values = effective(&prepared)?;
-    let mut text = format!(
+    let mut text = crate::i18n::format_text!(
         "继承 GUI 启动环境：{}\r\n实际启动方式：{}\r\n{}\r\n最终 PATH（由上到下）：\r\n{}\r\n\r\n变量来源（值隐藏）：\r\n",
         p.inherit_environment,
-        if !p.stdio.is_empty() {
+        crate::i18n::text(if !p.stdio.is_empty() {
             "完整启动命令优先"
         } else if p.managed {
             "固定托管包入口"
         } else {
             "已有程序与参数"
-        },
+        }),
         note,
         values["PATH"].split(';').collect::<Vec<_>>().join("\r\n")
     );
     for (key, value) in values {
-        let source = if key == "PATH" {
+        let source = crate::i18n::text(if key == "PATH" {
             "合并后的目录"
         } else if p.managed && crate::dependencies::operational_variable(&key) {
             "应用管理"
@@ -246,14 +246,14 @@ pub fn preview(root: &std::path::Path, p: &Profile) -> Result<String> {
             "Windows 基础环境"
         } else {
             "GUI 启动环境"
-        };
-        text += &format!(
+        });
+        text += &crate::i18n::format_text!(
             "{key} · {source} · {}\r\n",
-            if value.is_empty() {
+            crate::i18n::text(if value.is_empty() {
                 "空值"
             } else {
                 "[隐藏]"
-            }
+            })
         );
     }
     Ok(text)

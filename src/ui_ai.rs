@@ -44,6 +44,11 @@ unsafe fn text(m: &Modal, id: i32) -> String {
     String::from_utf16_lossy(&v[..n.max(0) as usize])
 }
 unsafe fn set(m: &Modal, id: i32, value: &str) {
+    let value = if id == 816 || id == 818 || (801..=809).contains(&id) {
+        std::borrow::Cow::Borrowed(value)
+    } else {
+        i18n::text(value)
+    };
     SetWindowTextW(
         GetDlgItem(m.hwnd, id),
         wide(value.replace('\n', "\r\n").replace("\r\r\n", "\r\n")).as_ptr(),
@@ -278,14 +283,14 @@ unsafe fn review(m: &mut Modal) {
         (
             "启动方式 / 外部程序".to_string(),
             if old.managed {
-                "应用管理".into()
+                i18n::text("应用管理").into_owned()
             } else {
                 old.command.clone()
             },
             if p.kind == "external" {
                 p.command.clone()
             } else {
-                format!("应用管理 {}（保留完整命令）", p.kind)
+                i18n::text(&format!("应用管理 {}（保留完整命令）", p.kind)).into_owned()
             },
         ),
         (
@@ -322,19 +327,19 @@ unsafe fn review(m: &mut Modal) {
                 if v.required { "（必填）" } else { "" }
             ),
             if old.env.iter().any(|e| e.key.eq_ignore_ascii_case(&v.name)) {
-                "已有值（不显示）".into()
+                i18n::text("已有值（不显示）").into_owned()
             } else {
-                "未设置".into()
+                i18n::text("未设置").into_owned()
             },
             if pair.value.is_empty() {
-                format!("待填写：{}", v.description)
+                i18n::text(&format!("待填写：{}", v.description)).into_owned()
             } else {
-                "沿用已有值（不显示）".into()
+                i18n::text("沿用已有值（不显示）").into_owned()
             },
         ));
     }
     for (i, (field, old, new)) in rows.iter().enumerate() {
-        let mut s = wide(field);
+        let mut s = localized_wide(field);
         let item = LVITEMW {
             mask: LVIF_TEXT,
             iItem: i as i32,
@@ -360,9 +365,9 @@ unsafe fn review(m: &mut Modal) {
     );
 }
 fn explanation(p: &Proposal, check: &PackageCheck) -> String {
-    let mut s = format!(
+    let mut s = i18n::text(&format!(
         "{}\r\n\r\n{}\r\n\r\n安装：{} / {} / {}\r\n入口：{}{}\r\n\r\n常驻参数：\r\n",
-        check.label(),
+        i18n::text(&check.label()),
         p.explanation,
         p.kind,
         p.package,
@@ -373,37 +378,38 @@ fn explanation(p: &Proposal, check: &PackageCheck) -> String {
         },
         p.command,
         p.entry
-    );
+    ))
+    .into_owned();
     for a in &p.arguments {
         s += &format!("{:?}：{}\r\n", a.value, a.description);
     }
-    s += "\r\n环境变量（值只在本机填写）：\r\n";
+    s += &i18n::text("\r\n环境变量（值只在本机填写）：\r\n");
     for e in &p.environment {
         s += &format!(
             "{} [{}]：{}\r\n",
             e.name,
-            if e.required { "必填" } else { "可选" },
+            i18n::text(if e.required { "必填" } else { "可选" }),
             e.description
         );
     }
-    s += "\r\n运行条件：\r\n";
+    s += &i18n::text("\r\n运行条件：\r\n");
     for r in &p.prerequisites {
         s += &format!("• {r}\r\n");
     }
-    s += "\r\n独立一次性步骤（不作为常驻参数；安装后手动运行）：\r\n";
+    s += &i18n::text("\r\n独立一次性步骤（不作为常驻参数；安装后手动运行）：\r\n");
     for (i, step) in p.setup.iter().enumerate() {
-        s += &format!(
+        s += &i18n::text(&format!(
             "{}. {}\r\n参数数组：{}\r\n",
             i + 1,
             step.description,
             serde_json::to_string(&step.args).unwrap_or_default()
-        );
+        ));
     }
-    s += "\r\n不确定项：\r\n";
+    s += &i18n::text("\r\n不确定项：\r\n");
     for r in &p.uncertainties {
         s += &format!("• {r}\r\n");
     }
-    s += "\r\n资料来源（模型声明，请核对）：\r\n";
+    s += &i18n::text("\r\n资料来源（模型声明，请核对）：\r\n");
     for r in &p.sources {
         s += &format!("• {r}\r\n");
     }
@@ -653,25 +659,25 @@ pub(super) unsafe fn procedure(m: &mut Modal, msg: u32, w: WPARAM, l: LPARAM) ->
                         )?;
                         let warning = format!(
                             "只填入未保存草稿，不安装、不执行、不启动。\r\n{}\r\n{}\r\n{}",
-                            d.check.label(),
+                            i18n::text(&d.check.label()),
                             if !new.stdio.is_empty() {
-                                "注意：原完整命令仍优先，需手动清空后才采用托管配置。"
+                                i18n::text("注意：原完整命令仍优先，需手动清空后才采用托管配置。")
                             } else {
-                                ""
+                                i18n::text("")
                             },
                             if p.environment.iter().any(|e| e.required
                                 && !new.env.iter().any(|v| v.key.eq_ignore_ascii_case(&e.name)
                                     && !ai::placeholder(&v.value)))
                             {
-                                "部分必填环境变量尚未填写，请保存后在环境页补齐。"
+                                i18n::text("部分必填环境变量尚未填写，请保存后在环境页补齐。")
                             } else {
-                                ""
+                                i18n::text("")
                             }
                         );
                         if MessageBoxW(
                             m.hwnd,
-                            wide(warning).as_ptr(),
-                            wide("确认填入草稿").as_ptr(),
+                            localized_wide(warning).as_ptr(),
+                            localized_wide("确认填入草稿").as_ptr(),
                             MB_YESNO | MB_ICONINFORMATION,
                         ) == IDYES
                         {
@@ -698,8 +704,8 @@ pub(super) unsafe fn procedure(m: &mut Modal, msg: u32, w: WPARAM, l: LPARAM) ->
         layout(m);
         MessageBoxW(
             m.hwnd,
-            wide(error).as_ptr(),
-            wide("AI 安装向导").as_ptr(),
+            localized_wide(error).as_ptr(),
+            localized_wide("AI 安装向导").as_ptr(),
             MB_ICONWARNING,
         );
     }
@@ -790,7 +796,7 @@ pub(super) unsafe fn show(
         GetDlgItem(m.hwnd, 809),
         EM_SETCUEBANNER,
         0,
-        wide("分支（可选）").as_ptr() as isize,
+        localized_wide("分支（可选）").as_ptr() as isize,
     );
     modal_control(
         &m,
@@ -873,7 +879,7 @@ pub(super) unsafe fn show(
         .iter()
         .enumerate()
     {
-        let mut s = wide(label);
+        let mut s = localized_wide(label);
         let col = LVCOLUMNW {
             mask: LVCF_TEXT | LVCF_WIDTH,
             pszText: s.as_mut_ptr(),

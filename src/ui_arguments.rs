@@ -38,7 +38,7 @@ impl Drop for Editor {
 
 pub(super) fn summary(values: &[String]) -> String {
     if values.is_empty() {
-        return "未设置参数".into();
+        return i18n::text("未设置参数").into_owned();
     }
     values
         .iter()
@@ -48,9 +48,9 @@ pub(super) fn summary(values: &[String]) -> String {
                 "{}. {}",
                 i + 1,
                 if value.is_empty() {
-                    "（空参数）"
+                    i18n::text("（空参数）")
                 } else {
-                    value
+                    std::borrow::Cow::Borrowed(value.as_str())
                 }
             )
         })
@@ -190,8 +190,8 @@ pub(super) unsafe fn procedure(modal: &mut Modal, msg: u32, w: WPARAM, l: LPARAM
                 if changed != 0 {
                     MessageBoxW(
                         modal.hwnd,
-                        wide(format!("已自动清理 {changed} 项参数首尾的空格、换行等空白。\r\n参数内部的空格及空参数保持不变。")).as_ptr(),
-                        wide("参数已整理").as_ptr(),
+                        localized_wide(format!("已自动清理 {changed} 项参数首尾的空格、换行等空白。\r\n参数内部的空格及空参数保持不变。")).as_ptr(),
+                        localized_wide("参数已整理").as_ptr(),
                         MB_OK | MB_ICONINFORMATION,
                     );
                 }
@@ -205,8 +205,8 @@ pub(super) unsafe fn procedure(modal: &mut Modal, msg: u32, w: WPARAM, l: LPARAM
                 if args.len() >= 6000 {
                     MessageBoxW(
                         modal.hwnd,
-                        wide("参数数量已达到 6000 项上限").as_ptr(),
-                        wide("参数").as_ptr(),
+                        localized_wide("参数数量已达到 6000 项上限").as_ptr(),
+                        localized_wide("参数").as_ptr(),
                         MB_OK,
                     );
                     return 0;

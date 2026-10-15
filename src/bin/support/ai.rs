@@ -1,6 +1,6 @@
 use super::*;
 #[path = "../../../tests/support/ai_http.rs"]
-mod http;
+pub(super) mod http;
 pub(super) fn prepare(store: &Store) -> Result<http::Mock> {
     let mock = http::Mock::new(|r| {
         if r.line.contains("/v1/chat/completions") {

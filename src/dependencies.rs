@@ -1351,7 +1351,7 @@ pub fn report(root: &Path, profiles: &[Profile], active: &[Profile]) -> String {
         Ok(path) => path,
         Err(error) => return error,
     };
-    let mut text = format!(
+    let mut text = crate::i18n::format_text!(
         "管理目录：{}\r\n不会修改用户 / 系统 PATH；导入和启动不自动安装。\r\n\r\n",
         directory.display()
     );
@@ -1373,34 +1373,34 @@ pub fn report(root: &Path, profiles: &[Profile], active: &[Profile]) -> String {
             })
             .map(|p| p.name.clone())
             .collect::<std::collections::BTreeSet<_>>();
-        text += &format!(
+        text += &crate::i18n::format_text!(
             "{} {}：{}，{:.1} MiB\r\n  {}\r\n  引用：{}\r\n",
             r.kind,
             r.version,
-            if dir.join(r.executable).is_file() {
+            crate::i18n::text(if dir.join(r.executable).is_file() {
                 "已安装"
             } else {
                 "未安装"
-            },
+            }),
             size(&dir) as f64 / 1048576.,
             dir.display(),
             refs.into_iter().collect::<Vec<_>>().join("、")
         );
     }
-    text += &format!(
+    text += &crate::i18n::format_text!(
         "\r\n共享缓存：{:.1} MiB\r\n服务依赖：{:.1} MiB\r\n",
         size(&directory.join("cache")) as f64 / 1048576.,
         size(&directory.join("services")) as f64 / 1048576.
     );
     for p in profiles.iter().filter(|p| p.managed) {
-        text += &format!(
+        text += &crate::i18n::format_text!(
             "{}：{} {}，{}\r\n",
             p.name,
             p.dependency.kind,
             p.dependency.package,
             receipt(root, p)
-                .map(|r| format!("已安装 {}", r.resolved_version))
-                .unwrap_or_else(|_| "待安装 / 待应用".into())
+                .map(|r| crate::i18n::format_text!("已安装 {}", r.resolved_version))
+                .unwrap_or_else(|_| crate::i18n::text("待安装 / 待应用").into_owned())
         );
     }
     text

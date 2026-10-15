@@ -368,7 +368,7 @@ impl Certificate {
     fn dates(&self) -> String {
         unsafe {
             let info = &*(*self.0).pCertInfo;
-            format!("{} 至 {}", date(info.NotBefore), date(info.NotAfter))
+            crate::i18n::format_text!("{} 至 {}", date(info.NotBefore), date(info.NotAfter))
         }
     }
 }
@@ -460,10 +460,12 @@ pub fn prepare(root: &Path) -> Result<()> {
     server_config(root).map(|_| ())
 }
 pub fn info(root: &Path) -> String {
-    let intro = "HTTPS 证书管理\r\n\r\n所有服务共用一张证书，包含本机网卡 IPv4，服务证书默认 20 年、CA 30 年。启动时检查，运行中每分钟检查，剩余不足 30 天或新增网卡 IP 时自动补签。新连接使用新证书，现有 MCP 连接不重启。无需公网或额外进程。\r\n\r\n客户端必须信任公开 CA，不会跳过验证。Windows 导入公开 .cer 到当前用户的受信任根证书库。Node/独立证书库使用公开 .pem，配置 NODE_EXTRA_CA_CERTS。\r\n\r\n";
+    let intro = crate::i18n::text(
+        "HTTPS 证书管理\r\n\r\n所有服务共用一张证书，包含本机网卡 IPv4，服务证书默认 20 年、CA 30 年。启动时检查，运行中每分钟检查，剩余不足 30 天或新增网卡 IP 时自动补签。新连接使用新证书，现有 MCP 连接不重启。无需公网或额外进程。\r\n\r\n客户端必须信任公开 CA，不会跳过验证。Windows 导入公开 .cer 到当前用户的受信任根证书库。Node/独立证书库使用公开 .pem，配置 NODE_EXTRA_CA_CERTS。\r\n\r\n",
+    );
     match Certificate::load(&ca_path(root)) {
         Ok(cert) => {
-            let fingerprint = format!("{:x}", Sha256::digest(cert.bytes()));
+            let fingerprint = crate::i18n::format_text!("{:x}", Sha256::digest(cert.bytes()));
             let trusted = root_store()
                 .map(|store| unsafe {
                     let found = CertFindCertificateInStore(
@@ -482,25 +484,27 @@ pub fn info(root: &Path) -> String {
                 })
                 .unwrap_or(false);
             let server = Certificate::load(&root.join("tls/server.crt"))
-                .map(|cert| format!("共享服务证书有效期：{}", cert.dates()))
-                .unwrap_or_else(|_| "共享服务证书尚未生成".into());
+                .map(|cert| crate::i18n::format_text!("共享服务证书有效期：{}", cert.dates()))
+                .unwrap_or_else(|_| crate::i18n::text("共享服务证书尚未生成").into_owned());
             let sans = subjects().unwrap_or_default().join(", ");
-            format!(
+            crate::i18n::format_text!(
                 "{intro}CA SHA256：{fingerprint}\r\n有效期：{}\r\n状态：{}；本机当前用户{}信任\r\n公开 CA：{}\r\n\r\n私钥只保存在当前用户和 SYSTEM 可访问的证书目录，不随便携包分发，不会导出。新网卡 IP 会在下次启动/刷新入口时签发证书。CA 更换后，所有客户端都需重新导入。",
                 cert.dates(),
-                if cert.expired() {
+                crate::i18n::text(if cert.expired() {
                     "已失效"
                 } else {
                     "有效"
-                },
-                if trusted { "已" } else { "尚未" },
+                }),
+                crate::i18n::text(if trusted { "已" } else { "尚未" }),
                 ca_path(root).display()
-            ) + &format!(
+            ) + &crate::i18n::format_text!(
                 "\r\n{server}\r\n当前网卡 IP：{sans}\r\nCA/服务私钥以 DPAPI 加密保存；公开证书不含私钥。"
             )
         }
         Err(error) => {
-            format!("{intro}{error}\r\n\r\n请点击“生成/检查”，或先启用并启动一个 HTTPS 服务。")
+            crate::i18n::format_text!(
+                "{intro}{error}\r\n\r\n请点击“生成/检查”，或先启用并启动一个 HTTPS 服务。"
+            )
         }
     }
 }

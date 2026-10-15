@@ -3,7 +3,7 @@ $root = Split-Path $PSScriptRoot -Parent
 $stage = Join-Path $root ('.build/source-package-' + [guid]::NewGuid().ToString('N'))
 $source = Join-Path $stage 'SuperGatewayGUI-source'
 New-Item -ItemType Directory -Force "$source/.cargo", "$source/legacy/dotnet" | Out-Null
-foreach ($name in @('Cargo.toml','Cargo.lock','build.rs','app.manifest','README.md','DEVELOPMENT.md','CHANGELOG.md','VALIDATION.md','DEPENDENCIES_VALIDATION.md','STORAGE_VALIDATION.md','ONESHOT_VALIDATION.md','ENVIRONMENT_VALIDATION.md','THIRD_PARTY_NOTICES.md','LICENSE','.gitignore')) {
+foreach ($name in @('Cargo.toml','Cargo.lock','build.rs','app.manifest','README.md', 'README.en.md','DEVELOPMENT.md','CHANGELOG.md','VALIDATION.md','DEPENDENCIES_VALIDATION.md','STORAGE_VALIDATION.md','ONESHOT_VALIDATION.md','ENVIRONMENT_VALIDATION.md','THIRD_PARTY_NOTICES.md','LICENSE','.gitignore')) {
     Copy-Item -LiteralPath "$root/$name" $source
 }
 Copy-Item "$root/.cargo/config.toml" "$source/.cargo"

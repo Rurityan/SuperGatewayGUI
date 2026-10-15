@@ -1,5 +1,12 @@
 //! Offline help embedded in the executable; examples are never executed.
-pub const SECTIONS: &[(&str, &str)] = &[
+pub fn sections() -> &'static [(&'static str, &'static str)] {
+    if gateway::i18n::english() {
+        ENGLISH
+    } else {
+        CHINESE
+    }
+}
+pub const CHINESE: &[(&str, &str)] = &[
     (
         "快速开始",
         r#"SuperGateway 中文使用帮助
@@ -213,5 +220,134 @@ SuperGatewayGUI.exe --data-dir "D:\独立配置"
 审核页逐项勾选要采用的字段。选中变量行后填写实际值，密钥默认隐藏，不能填 YOUR_API_KEY 等占位内容；这些值不发送给模型。填入只更新未保存草稿，请核对后在主界面保存，再手动安装运行环境及依赖、启动并测试连接。原完整命令仍优先，使用托管入口前需手动清空。
 
 一次性 setup 参数与常驻参数分开。分析结果中可查看 / 选择复制步骤，安装包后通过原有“一次性命令 / 安装向导”逐项输入参数并确认运行。AI 不会替你运行向导。不支持的安装方式只给说明，不生成自动 shell 脚本。关闭向导丢弃资料及生成历史，采用的普通服务字段照常保存 / 导出。"#,
+    ),
+];
+
+const ENGLISH: &[(&str, &str)] = &[
+    (
+        "Quick start",
+        r#"SuperGateway User Guide
+
+1. Add a service. Choose a local program, remote Streamable HTTP or remote SSE.
+2. Fill in its source, output protocol and access settings, then save and start.
+3. Test connection initializes MCP and lists available tools. It does not call tools.
+4. Copy the address or client configuration into an MCP client.
+
+The GUI and bundled gateway need no .NET, Node.js or Python installation. Use Settings → Runtimes and dependencies to prepare private runtimes when needed. Each service has isolated packages. Saving, importing or starting never installs missing dependencies automatically.
+
+Settings → Language offers System, Simplified Chinese and English. System follows the Windows display language: Chinese uses Simplified Chinese; other languages use English. Saving updates the UI without restarting services. Service names, paths, arguments, variables and keys are preserved.
+
+Closing the main window hides it to the tray. Double-click the tray to restore it. Exit asks before stopping running MCP gateways; No keeps the GUI and services running. The application closes stdin first and cleans up the process tree after the stop timeout."#,
+    ),
+    (
+        "Source and launch",
+        r#"Local and remote sources
+
+Local: enter a program and an array of arguments, working directory and service environment. Each argument has its own row; spaces inside an argument are preserved. Delete a blank row when you do not want an empty argument.
+
+Example program: D:\Tools\my-mcp.exe
+Arguments: --workspace and D:\Projects\My project as separate rows.
+
+A nonempty full command takes priority over the program, managed package entry and argument fields. The shell is selected once at GUI startup: pwsh 7, then Windows PowerShell, then cmd.exe. Use the program / argument fields when shell interpretation is unnecessary.
+
+Managed npm / Python mode allows saving a package name before installing anything. It preserves the original program and command. Install dependencies explicitly; missing dependencies never silently fall back to the system.
+
+Remote Streamable HTTP and SSE sources use a URL, optional headers and Bearer Token. These are upstream credentials; gateway access keys are separate."#,
+    ),
+    (
+        "Gateway and sessions",
+        r#"Network output and advanced settings
+
+Output: Streamable HTTP is recommended. SSE supports older clients; WebSocket requires a compatible client. This GUI receives local stdio input and exposes network output only.
+
+Listen address: 0.0.0.0 listens on all adapters. 127.0.0.1 restricts access to this computer. Select an adapter IP to bind to it. Each service has an independent port, normally allocated from 8000.
+
+Endpoint path: /mcp for HTTP, /sse for SSE, or a chosen WebSocket route. The SSE message path must differ from its connection path. Paths start with / and have no spaces or query strings.
+
+Gateway key: clients send X-API-Key or Authorization: Bearer. Additional keys permit different clients and key rotation. Never put real keys in public configuration files.
+
+CORS: blank disables it, * permits all origins, otherwise enter one origin per line.
+
+Stateful sessions preserve the MCP process for a client session. Session timeout is gateway session expiration in milliseconds, not the client's tool-call timeout. Client startup / tool timeouts belong to client exports.
+
+Editing a running service creates pending changes. Apply and restart activates them for that service only. Failed services are not restarted indefinitely."#,
+    ),
+    (
+        "Environment and TLS",
+        r#"Per-service environment and encrypted transport
+
+Inherit system environment uses the GUI startup snapshot. Restart the GUI to pick up external changes. With inheritance off, only essential Windows variables remain. Service variables override inherited names without case sensitivity; empty values remain empty. None of this changes Windows user or machine environment settings.
+
+Additional folders extend PATH. For Blender installed at D:\Graphics\Blender 4.5\blender.exe, add D:\Graphics\Blender 4.5. Do not put the executable itself in the folder list.
+
+Managed PATH order: service virtual environment, managed tools, extra folders, essential Windows folders, inherited PATH (when enabled). Managed runtime and cache variables cannot be overridden. Environment inheritance is separate from package isolation and is not a security sandbox.
+
+Variable values are visible by default. Hide value is persisted per variable and takes precedence over list visibility. Headers and access keys are hidden by default. Preview shows sources and PATH order without revealing sensitive values.
+
+Enable HTTPS / WSS to encrypt LAN traffic. The application manages a shared local CA and IP certificates. Export the CA from Settings and trust it in each client using that client's certificate settings. Trust the CA only on devices you control. Rebuilding the CA requires clients to trust the replacement. Keys remain encrypted in settings.dat with Windows DPAPI."#,
+    ),
+    (
+        "Runtimes and packages",
+        r#"Managed runtimes, dependencies and setup
+
+Settings → Runtimes and dependencies installs private Node.js (npm / npx), uv (uvx) and Python. Downloads use the pinned catalog and SHA256 verification. No global PATH, file associations or system runtime installation is used.
+
+For npm: enter a package name, version (blank resolves current at installation), executable entry and arguments. For Python: prepare uv and Python, then install the package in its service virtual environment. Packages are isolated by service ID; runtimes and caches are shared. Exact installed versions and locks are recorded. Upgrades require manual confirmation and are staged before activation.
+
+Example: mcp-for-blender is a Python package, not an npm package. Enter mcp-for-blender in Python mode, leave normal arguments empty and save. Install the runtimes and package. Then use One-shot command / Setup wizard with setup as a temporary argument. Review the command and confirm before running it in an interactive terminal. Setup may modify other applications; it is never run by saving or AI analysis.
+
+Example npm package: @playwright/mcp. Entry: playwright-mcp. To use installed Edge with isolated state, separate arguments are --browser, msedge and --isolated. Verify the repository requirements for your installed version.
+
+HTTP proxy defaults to direct; an example is http://127.0.0.1:10808. npm registry and Python index are configurable. Proxy settings apply only to application tasks and child processes. Prepared services can start without downloading packages. Running references block dependency deletion. Clearing caches keeps installed packages."#,
+    ),
+    (
+        "Clients and export",
+        r#"Client configuration, import and export
+
+The Client configuration / Export tab only affects the copied client settings. It never changes gateway or MCP execution. Copy the gateway URL and authentication into a client. HTTP has no local MCP child process in the client, so no child environment values are exported.
+
+Codex example (replace the address and key):
+[mcp_servers.example]
+url = "https://192.168.1.20:8000/mcp"
+http_headers = { "X-API-Key" = "YOUR_API_KEY" }
+startup_timeout_sec = 30
+tool_timeout_sec = 300
+
+Timeouts are optional integer seconds (1–86400). They apply to Codex; generic client JSON omits them. Codex export supports Streamable HTTP. Generic JSON supports HTTP / SSE. This application does not export independent stdio launchers.
+
+Example client JSON:
+{"mcpServers":{"example":{"type":"streamable-http","url":"http://127.0.0.1:8000/mcp"}}}
+
+Export profiles lets you select services and includes basic, advanced, environment, headers, keys and client options. The exchange file contains plaintext secrets; store it securely. Import previews allow selecting services before saving. Imports never install or start services. Installed package folders, certificate private keys, global AI settings and language preference are not included.
+
+Common mcpServers JSON / JSONC imports remain supported. Review conflicts and dependencies before saving. Gateway JSON copy is on the Advanced tab and is separate from client settings."#,
+    ),
+    (
+        "Storage and troubleshooting",
+        r#"Storage, startup and common failures
+
+Settings → Storage folders configures independent configuration and dependency roots. Configuration includes settings.dat, certificates and backups. Dependencies include private runtimes, service packages and caches. --data-dir overrides the configuration directory. Moving configuration retains the original copy; dependency folders are not moved automatically.
+
+Start in tray after login is optional. Administrator startup is a per-user interactive scheduled task and can only be changed while elevated. Restart as administrator requests UAC and stops gateways before restarting. Only services marked for auto-start resume. Save startup settings again after moving the application.
+
+If a background window seems missing, open the same executable with the same configuration directory to restore the existing instance. Restarting Explorer restores the tray icon.
+
+Missing program: install the required runtime explicitly or use an absolute path. npm E404: verify that the package belongs to npm rather than PyPI. Port occupied: select another port or adapter. Authentication failure: distinguish gateway access keys from upstream credentials. Certificate failure: configure client trust in the exported CA; do not disable verification as a substitute.
+
+Use the log filter for a single service or all services. Logs are bounded and redact known secrets. Clear current logs affects the selected filter only. Environment changes require Apply and restart for that service. Windows and third-party process diagnostics retain their original language."#,
+    ),
+    (
+        "AI setup wizard",
+        r#"AI-assisted MCP setup
+
+Configure base_url, api_key and model in Settings → AI setup wizard, then Save AI settings. They persist separately from services; API Key uses DPAPI and never enters service exports. The request is POST base_url + /chat/completions. Include /v1 only when required by the provider. No endpoint probing or automatic paid retries occur. Local HTTP and empty keys are supported. Test connection sends a potentially billable request.
+
+Read a public GitHub repository, optionally specify a branch, or paste README text. Documents are pinned to a commit: at most 8 files / 256 KiB, with no cloning, scripts or external recursive browsing. API and repository requests use the configured dependency proxy.
+
+Preview and generate opens the actual request before sending. Click Confirm and send to start generation. Success opens Analysis; the request can take up to 120 seconds and can be cancelled. The environment summary excludes user paths, variable values, secrets and other services. Pasted content and requirements are sent to your selected provider.
+
+The AI cannot execute commands or install dependencies. It returns a validated proposal with a package, entry, argument descriptions, variable names, prerequisites, separate setup steps, sources and uncertainties. English UI requests English explanations; model-supplied text is otherwise preserved. Package registry verification means that a package / version exists, not that it is installed or guaranteed to work.
+
+Review and apply lets you select individual changes and enter actual variable values locally. Those values are never sent to the model. Apply changes only the unsaved draft; save, installation, setup and service startup remain separate manual actions. The original full command remains higher priority until cleared manually. Closing the wizard discards source documents and generation history."#,
     ),
 ];

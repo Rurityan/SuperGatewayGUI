@@ -1,0 +1,2526 @@
+[
+  [
+    "加载应用图标",
+    "Load application icon"
+  ],
+  [
+    "重启进程标识无效",
+    "Invalid restart process ID"
+  ],
+  [
+    "注册窗口恢复消息",
+    "Register window activation message"
+  ],
+  [
+    "创建应用互斥锁",
+    "Create application mutex"
+  ],
+  [
+    "已有实例正在启动或无法响应，请稍后重新打开程序。不要重复启动服务。",
+    "Another instance is starting or not responding. Try again shortly; do not start services twice."
+  ],
+  [
+    "注册原生窗口",
+    "Register native window"
+  ],
+  [
+    "SuperGateway · Rust Win32 MCP 网关管理",
+    "SuperGateway · Native Win32 MCP Manager"
+  ],
+  [
+    "创建主窗口",
+    "Create main window"
+  ],
+  [
+    "已有后台实例无法响应窗口恢复，请稍后重试。",
+    "The background instance is not responding. Try restoring it again shortly."
+  ],
+  [
+    "打开主窗口",
+    "Open main window"
+  ],
+  [
+    "停止全部服务",
+    "Stop all services"
+  ],
+  [
+    "彻底退出",
+    "Exit application"
+  ],
+  [
+    "Rust 原生 Win32 · MCP 网关管理",
+    "Native Win32 · MCP Gateway Manager"
+  ],
+  [
+    "＋ 添加",
+    "＋ Add"
+  ],
+  [
+    "删除",
+    "Delete"
+  ],
+  [
+    "导入文件",
+    "Import file"
+  ],
+  [
+    "粘贴导入",
+    "Paste import"
+  ],
+  [
+    "全部启动",
+    "Start all"
+  ],
+  [
+    "全部停止",
+    "Stop all"
+  ],
+  [
+    "设置",
+    "Settings"
+  ],
+  [
+    "退出",
+    "Exit"
+  ],
+  [
+    "帮助",
+    "Help"
+  ],
+  [
+    "导出配置",
+    "Export profiles"
+  ],
+  [
+    "添加你的第一个 MCP 服务",
+    "Add your first MCP service"
+  ],
+  [
+    "支持本地程序、远程 HTTP 和 SSE",
+    "Local programs, remote HTTP and SSE"
+  ],
+  [
+    "基础配置",
+    "Basic"
+  ],
+  [
+    "高级设置",
+    "Advanced"
+  ],
+  [
+    "环境 / 请求头 / 密钥",
+    "Environment / Headers / Keys"
+  ],
+  [
+    "客户端配置 / 导出",
+    "Client configuration / Export"
+  ],
+  [
+    "服务名称",
+    "Service name"
+  ],
+  [
+    "服务来源",
+    "Service source"
+  ],
+  [
+    "本地 MCP 程序（npx / uvx / exe）",
+    "Local MCP program (npx / uvx / exe)"
+  ],
+  [
+    "远程 Streamable HTTP（/mcp）",
+    "Remote Streamable HTTP (/mcp)"
+  ],
+  [
+    "远程 SSE（/sse）",
+    "Remote SSE (/sse)"
+  ],
+  [
+    "程序名或路径",
+    "Program or path"
+  ],
+  [
+    "浏览…",
+    "Browse…"
+  ],
+  [
+    "启动参数",
+    "Arguments"
+  ],
+  [
+    "编辑参数…",
+    "Edit arguments…"
+  ],
+  [
+    "工作目录",
+    "Working directory"
+  ],
+  [
+    "目录…",
+    "Folder…"
+  ],
+  [
+    "完整启动命令",
+    "Full launch command"
+  ],
+  [
+    "填写后忽略上方程序和参数；启动时选定：{}。",
+    "Overrides the program and arguments above. Startup shell: {}."
+  ],
+  [
+    "未检测到解释器",
+    "No shell detected"
+  ],
+  [
+    "启动方式",
+    "Launch mode"
+  ],
+  [
+    "已有程序 / 完整命令",
+    "Existing program / Full command"
+  ],
+  [
+    "应用管理的 npm / Python 包",
+    "Managed npm / Python package"
+  ],
+  [
+    "配置包与安装依赖…",
+    "Package and dependencies…"
+  ],
+  [
+    "未安装 MCP？选择应用管理，填写包名即可保存，无需程序路径或先运行 setup。",
+    "Not installed? Select a managed package and enter its name to save. No program path or setup is required."
+  ],
+  [
+    "AI 安装向导…",
+    "AI setup wizard…"
+  ],
+  [
+    "远程 MCP URL",
+    "Remote MCP URL"
+  ],
+  [
+    "输出协议",
+    "Output protocol"
+  ],
+  [
+    "Streamable HTTP（推荐）",
+    "Streamable HTTP (recommended)"
+  ],
+  [
+    "SSE（旧客户端）",
+    "SSE (legacy clients)"
+  ],
+  [
+    "监听端口",
+    "Listen port"
+  ],
+  [
+    "监听地址",
+    "Listen address"
+  ],
+  [
+    "刷新 IP",
+    "Refresh IPs"
+  ],
+  [
+    "包含在全部启动中",
+    "Include in Start all"
+  ],
+  [
+    "应用启动时自动运行",
+    "Run when the application starts"
+  ],
+  [
+    "连接路径",
+    "Endpoint path"
+  ],
+  [
+    "SSE 消息路径",
+    "SSE message path"
+  ],
+  [
+    "网关访问密钥",
+    "Gateway access key"
+  ],
+  [
+    "客户端发送 Bearer Token 或 X-API-Key；额外密钥在第三页管理。",
+    "Clients send a Bearer Token or X-API-Key. Manage additional keys on the third tab."
+  ],
+  [
+    "CORS 来源",
+    "CORS origins"
+  ],
+  [
+    "留空关闭，* 允许所有来源，或每行一个来源。",
+    "Blank disables CORS; * allows all origins. Otherwise enter one origin per line."
+  ],
+  [
+    "有状态会话 · 保留同一客户端的 MCP 进程",
+    "Stateful sessions · Keep one MCP process per client"
+  ],
+  [
+    "会话超时(ms)",
+    "Session timeout (ms)"
+  ],
+  [
+    "日志级别",
+    "Log level"
+  ],
+  [
+    "普通",
+    "Normal"
+  ],
+  [
+    "调试",
+    "Debug"
+  ],
+  [
+    "关闭",
+    "Close"
+  ],
+  [
+    "启用 HTTPS / WSS · 自动签发及续期 IP 证书",
+    "Enable HTTPS / WSS · Automatic IP certificates and renewal"
+  ],
+  [
+    "启用后仅 TLS 入口对外；证书管理与信任操作位于“设置”。",
+    "Only TLS endpoints are exposed when enabled. Manage certificates and trust in Settings."
+  ],
+  [
+    "继承系统环境变量（GUI 启动时的环境）",
+    "Inherit system environment (captured at GUI startup)"
+  ],
+  [
+    "预览服务环境…",
+    "Preview environment…"
+  ],
+  [
+    "关闭后保留必要 Windows 环境；额外变量仅注入此服务，不修改系统设置。",
+    "When disabled, only essential Windows variables remain. Service variables never change global settings."
+  ],
+  [
+    "环境变量 · 值默认显示，可选隐藏",
+    "Environment variables · Visible by default; hiding is optional"
+  ],
+  [
+    "请求头 / 响应头 · 值默认隐藏",
+    "Request / Response headers · Hidden by default"
+  ],
+  [
+    "额外访问密钥 · 用于多客户端或密钥轮换",
+    "Additional access keys · Multiple clients or key rotation"
+  ],
+  [
+    "添加",
+    "Add"
+  ],
+  [
+    "编辑",
+    "Edit"
+  ],
+  [
+    "隐藏环境变量值",
+    "Hide environment values"
+  ],
+  [
+    "附加程序目录 · 例如 Blender 所在文件夹",
+    "Additional program directories · e.g. the Blender folder"
+  ],
+  [
+    "添加目录…",
+    "Add folder…"
+  ],
+  [
+    "删除目录",
+    "Remove folder"
+  ],
+  [
+    "托管 PATH：虚拟环境 → 托管工具 → 附加目录 → Windows → 继承 PATH。列表顺序为查找顺序；移动目录后重新导出。",
+    "Managed PATH: virtual environment → managed tools → extra folders → Windows → inherited PATH. Re-export after moving folders."
+  ],
+  [
+    "仅生成客户端连接配置 · 请先启动 GUI 网关",
+    "Client connection settings only · Start the GUI gateway first"
+  ],
+  [
+    "启动超时（秒）",
+    "Startup timeout (s)"
+  ],
+  [
+    "工具超时（秒）",
+    "Tool timeout (s)"
+  ],
+  [
+    "超时留空使用客户端默认值，范围 1–86400 秒；仅 Codex TOML 导出。不是网关会话空闲超时。",
+    "Blank uses client defaults; 1–86400 seconds. Codex TOML only. This is separate from the gateway session idle timeout."
+  ],
+  [
+    "此页仅影响导出的客户端配置，不改变网关或 MCP 服务。HTTP 请求不创建本地 MCP 子进程，不导出环境变量。服务变量在“环境 / 请求头 / 密钥”页设置。JSON 不包含 Codex 超时字段。",
+    "This tab affects exported client settings only. HTTP connections do not create a local MCP process or export environment variables. Configure service variables on the Environment / Headers / Keys tab. JSON omits Codex timeout fields."
+  ],
+  [
+    "复制 Codex TOML",
+    "Copy Codex TOML"
+  ],
+  [
+    "复制客户端 JSON",
+    "Copy client JSON"
+  ],
+  [
+    "客户端参数只用于导出。认证取当前网关访问密钥；不复制上游认证或 MCP 环境。JSON 支持 HTTP / SSE；Codex TOML 仅支持 Streamable HTTP，不生成 stdio 桥接。",
+    "Client settings affect exports only. Authentication uses the gateway key, excluding upstream authentication and MCP variables. JSON supports HTTP / SSE; Codex TOML supports Streamable HTTP only."
+  ],
+  [
+    "复制网关配置",
+    "Copy gateway JSON"
+  ],
+  [
+    "保存配置",
+    "Save profile"
+  ],
+  [
+    "启动",
+    "Start"
+  ],
+  [
+    "停止",
+    "Stop"
+  ],
+  [
+    "应用并重启",
+    "Apply and restart"
+  ],
+  [
+    "测试连接",
+    "Test connection"
+  ],
+  [
+    "复制连接地址",
+    "Copy address"
+  ],
+  [
+    "清空当前日志",
+    "Clear current logs"
+  ],
+  [
+    "日志筛选",
+    "Log filter"
+  ],
+  [
+    "0.0.0.0 · 所有网卡（默认）",
+    "0.0.0.0 · All adapters (default)"
+  ],
+  [
+    "127.0.0.1 · 仅本机访问",
+    "127.0.0.1 · This computer only"
+  ],
+  [
+    "{selected} · 已保存，当前网卡未检测到",
+    "{selected} · Saved; adapter not currently detected"
+  ],
+  [
+    " · 待应用",
+    " · Pending changes"
+  ],
+  [
+    "已停止",
+    "Stopped"
+  ],
+  [
+    "待安装",
+    "Not installed"
+  ],
+  [
+    "全部服务",
+    "All services"
+  ],
+  [
+    "请先添加或选择服务",
+    "Add or select a service first"
+  ],
+  [
+    "客户端超时须为整数秒，或留空",
+    "Client timeouts must be integer seconds or blank"
+  ],
+  [
+    "端口须为 1–65535",
+    "Port must be 1–65535"
+  ],
+  [
+    "请选择监听地址",
+    "Select a listen address"
+  ],
+  [
+    "会话超时须为整数",
+    "Session timeout must be an integer"
+  ],
+  [
+    "只有本地 MCP 服务需要托管依赖",
+    "Only local MCP services use managed dependencies"
+  ],
+  [
+    "已启用管理员登录启动，请先以管理员身份重启，再更改存放路径，以便同步计划任务。",
+    "Administrator login startup is enabled. Restart as administrator before changing storage paths so the scheduled task can be updated."
+  ],
+  [
+    "保存目录并重启应用？\r\n现有配置与证书复制到新配置目录，原文件保留；新配置目录必须为空。\r\n依赖不迁移、不删除、不自动安装。网关将停止，仅自动运行的服务会在重启后恢复。",
+    "Save folders and restart the application?\r\nConfiguration and certificates will be copied to an empty configuration folder; originals remain.\r\nDependencies are not moved, deleted or installed. Gateways stop; only auto-start services resume after restart."
+  ],
+  [
+    "名称或端口与另一个服务重复",
+    "Another service has the same name or port"
+  ],
+  [
+    "网关运行",
+    "Gateway running"
+  ],
+  [
+    "MCP 验证成功",
+    "MCP verified"
+  ],
+  [
+    "MCP 验证失败",
+    "MCP verification failed"
+  ],
+  [
+    "当前配置尚未保存。是否先保存？",
+    "This profile has unsaved changes. Save them first?"
+  ],
+  [
+    "点击“配置包与安装依赖”安装；setup 在安装后通过一次性命令运行。",
+    "Use Package and dependencies to install. Run setup separately after installation."
+  ],
+  [
+    " · 配置待应用",
+    " · Changes pending"
+  ],
+  [
+    "启动中",
+    "Starting"
+  ],
+  [
+    "未安装 MCP？选择“应用管理的 npm / Python 包”，点击“配置包与安装依赖”，填写包名即可保存；无需程序路径或先运行 setup。",
+    "Not installed? Select Managed npm / Python package, open Package and dependencies, and enter a package name. No program path or setup is required to save."
+  ],
+  [
+    "{}：{} · 入口：{} · 启动参数：{} 项\r\n{}",
+    "{}: {} · Entry: {} · Arguments: {}\r\n{}"
+  ],
+  [
+    "Python 包",
+    "Python package"
+  ],
+  [
+    "npm 包",
+    "npm package"
+  ],
+  [
+    "尚未填写包名",
+    "No package name"
+  ],
+  [
+    "安装时自动识别",
+    "Detect during installation"
+  ],
+  [
+    "当前使用包入口；填写有效包名后即可保存，原始程序与参数保留。",
+    "The package entry is active. Enter a valid package name to save; the original program and arguments are preserved."
+  ],
+  [
+    "当前优先执行完整启动命令，包入口与参数不参与启动；清空完整命令后才使用包入口。",
+    "The full command takes priority. Package entry and arguments are ignored until the full command is cleared."
+  ],
+  [
+    "\r\n保存不会下载或执行命令；安装完成后，可通过一次性命令运行 setup。",
+    "\r\nSaving never downloads or runs commands. Run setup separately after installation."
+  ],
+  [
+    "密钥 {}  ·  ********",
+    "Key {}  ·  ********"
+  ],
+  [
+    "当前有 {count} 个 MCP 网关服务正在运行。\r\n\r\n是否关闭这些 MCP 服务并退出 GUI？\r\n选择“否”将保持服务和 GUI 运行。",
+    "{count} MCP gateway service(s) are running.\r\n\r\nStop these MCP services and exit the GUI?\r\nChoose No to keep the services and GUI running."
+  ],
+  [
+    "网关",
+    "Gateway"
+  ],
+  [
+    "{} 个工具",
+    "{} tools"
+  ],
+  [
+    "连接成功，此 MCP 没有工具",
+    "Connected; this MCP has no tools"
+  ],
+  [
+    "MCP 工具列表",
+    "MCP tool list"
+  ],
+  [
+    "目录设置已保存，自动重启失败：{error}。请退出后重新打开。",
+    "Storage settings were saved, but automatic restart failed: {error}. Exit and reopen the application."
+  ],
+  [
+    "HTTPS 证书状态",
+    "HTTPS certificate status"
+  ],
+  [
+    "新服务 {n}",
+    "New service {n}"
+  ],
+  [
+    "删除「{}」并停止其网关？",
+    "Delete \"{}\" and stop its gateway?"
+  ],
+  [
+    "是否同时删除这个服务的全部托管依赖目录？下载缓存和共享运行环境会保留。",
+    "Also delete all managed dependency folders for this service? Shared runtimes and download caches remain."
+  ],
+  [
+    "MCP 配置|*.json;*.jsonc|所有文件|*.*",
+    "MCP configuration|*.json;*.jsonc|All files|*.*"
+  ],
+  [
+    "导入预览 · 不会自动启动",
+    "Import preview · Services will not start automatically"
+  ],
+  [
+    "导入勾选服务",
+    "Import selected services"
+  ],
+  [
+    "已成功导入 {} 个服务。未启动服务或安装依赖。",
+    "Imported {} service(s). No services started or dependencies installed."
+  ],
+  [
+    "导出 GUI 服务配置",
+    "Export GUI service profiles"
+  ],
+  [
+    "包含基础、高级、环境、请求头、密钥及客户端选项。\r\n不包含已安装的包、证书私钥或应用全局设置。文件中的密钥和变量值为明文，请妥善保管。",
+    "Includes basic, advanced, environment, headers, keys and client settings.\r\nExcludes installed packages, certificate private keys and global application settings. Exported secrets are plaintext; store the file securely."
+  ],
+  [
+    "导出勾选服务",
+    "Export selected services"
+  ],
+  [
+    "所选服务包含密钥、请求头或环境变量值，将以明文写入可迁移的配置文件。确定导出？",
+    "Selected profiles include secrets, headers or environment values. They will be exported in plaintext. Continue?"
+  ],
+  [
+    "SuperGatewayGUI 配置|*.json|所有文件|*.*",
+    "SuperGatewayGUI profiles|*.json|All files|*.*"
+  ],
+  [
+    "已成功导出 {} 个服务。",
+    "Exported {} service(s)."
+  ],
+  [
+    "将此本地 CA 加入当前用户的受信任根证书库？该 CA 可为本机/局域网 IP 签发证书。请确认是自己的 CA。",
+    "Trust this local CA in the current user's root certificate store? It can issue certificates for local and LAN IPs. Confirm that it is your CA."
+  ],
+  [
+    "重建 CA 会取消本机对旧 CA 的信任，并备份旧证书目录。所有客户端需重新导入新 CA。确定继续？",
+    "Rebuilding removes local trust in the old CA and backs up its certificates. All clients must import the new CA. Continue?"
+  ],
+  [
+    "Windows CA 证书|*.cer|Node CA 证书|*.pem|所有文件|*.*",
+    "Windows CA certificate|*.cer|Node CA certificate|*.pem|All files|*.*"
+  ],
+  [
+    "修改管理员登录启动必须先以管理员身份运行",
+    "Restart as administrator before changing administrator login startup"
+  ],
+  [
+    "保存配置失败：{error}；启动设置回退：{}",
+    "Could not save settings: {error}; startup settings rollback: {}"
+  ],
+  [
+    "成功",
+    "Success"
+  ],
+  [
+    "请从本地服务进入 AI 安装向导",
+    "Open the AI wizard from a local service"
+  ],
+  [
+    "方案已填入未保存草稿。请核对并保存，再手动安装依赖及启动服务。",
+    "Proposal filled into an unsaved draft. Review and save, then install dependencies and start the service manually."
+  ],
+  [
+    "选择额外程序目录（例如 Blender 所在文件夹）",
+    "Select an additional program folder (e.g. Blender)"
+  ],
+  [
+    "服务环境预览 · 值隐藏",
+    "Service environment preview · Values hidden"
+  ],
+  [
+    "编辑服务启动参数",
+    "Edit service arguments"
+  ],
+  [
+    "可执行程序|*.exe;*.cmd;*.bat|所有文件|*.*",
+    "Executables|*.exe;*.cmd;*.bat|All files|*.*"
+  ],
+  [
+    "\n运行中的服务有待应用修改，请点击“应用并重启”使其生效。",
+    "\nRunning service has pending changes. Use Apply and restart to activate them."
+  ],
+  [
+    "\n依赖尚未安装，可通过“配置包与安装依赖”安装。保存不会下载或运行服务。",
+    "\nDependencies are not installed. Use Package and dependencies to install; saving never downloads or starts the service."
+  ],
+  [
+    "配置保存成功。{detail}",
+    "Profile saved successfully.{detail}"
+  ],
+  [
+    "配置保存失败：\n{error}",
+    "Could not save profile:\n{error}"
+  ],
+  [
+    "服务已运行，请使用“应用并重启”使配置生效",
+    "Service is running. Use Apply and restart to activate changes."
+  ],
+  [
+    "请先选择服务",
+    "Select a service first"
+  ],
+  [
+    "请先启动服务",
+    "Start the service first"
+  ],
+  [
+    "服务不存在",
+    "Service not found"
+  ],
+  [
+    "客户端配置包含认证信息，请保存到可信位置。继续？",
+    "Client configuration includes authentication. Store it securely. Continue?"
+  ],
+  [
+    "通用 JSON 不包含 Codex 专属启动 / 工具超时字段；由目标客户端自行设置。继续复制？",
+    "Generic JSON omits Codex startup / tool timeouts. Set them in the destination client. Copy anyway?"
+  ],
+  [
+    "网关 JSON 本身不能限制环境继承。请由 GUI 启动服务以保留环境设置。",
+    "Gateway JSON cannot restrict environment inheritance. Start the service through this GUI to preserve its environment policy."
+  ],
+  [
+    "导出的网关配置包含明文环境变量或认证信息，请保存到可信位置。继续？",
+    "Exported gateway JSON includes plaintext environment values or authentication. Store it securely. Continue?"
+  ],
+  [
+    "密钥",
+    "Key"
+  ],
+  [
+    "请先选择要编辑的行",
+    "Select a row to edit"
+  ],
+  [
+    "SuperGateway Rust · 双击打开",
+    "SuperGateway · Double-click to open"
+  ],
+  [
+    "打开剪贴板",
+    "Open clipboard"
+  ],
+  [
+    "分配剪贴板",
+    "Allocate clipboard memory"
+  ],
+  [
+    "写剪贴板",
+    "Write clipboard"
+  ],
+  [
+    "剪贴板没有文本",
+    "Clipboard contains no text"
+  ],
+  [
+    "读取剪贴板",
+    "Read clipboard"
+  ],
+  [
+    "请至少勾选一个服务",
+    "Select at least one service"
+  ],
+  [
+    "选择服务",
+    "Select services"
+  ],
+  [
+    "检查目录",
+    "Check folder"
+  ],
+  [
+    "请输入名称和有效的密钥值",
+    "Enter a name and a valid key value"
+  ],
+  [
+    "检查输入",
+    "Check input"
+  ],
+  [
+    "SuperGateway · 离线帮助",
+    "SuperGateway · Offline Help"
+  ],
+  [
+    "全选",
+    "Select all"
+  ],
+  [
+    "全不选",
+    "Select none"
+  ],
+  [
+    "勾选需要的服务（空格键切换）；参数值在预览中隐藏",
+    "Select services (Space toggles); values are hidden in the preview"
+  ],
+  [
+    "配置摘要（不显示密钥值）",
+    "Configuration summary (secrets hidden)"
+  ],
+  [
+    "本地程序",
+    "Local program"
+  ],
+  [
+    "远程 HTTP",
+    "Remote HTTP"
+  ],
+  [
+    "远程 SSE",
+    "Remote SSE"
+  ],
+  [
+    "{source} → {} · 端口 {} · 环境 {} · PATH {} · 请求头 {} · 密钥 {} · {}",
+    "{source} → {} · Port {} · Env {} · PATH {} · Headers {} · Keys {} · {}"
+  ],
+  [
+    "托管依赖",
+    "Managed dependencies"
+  ],
+  [
+    "原有环境",
+    "Existing environment"
+  ],
+  [
+    "取消",
+    "Cancel"
+  ],
+  [
+    "无法显示预览正文，操作已取消。",
+    "Cannot display the preview. The operation was cancelled."
+  ],
+  [
+    "编辑环境变量 · 可选隐藏内容",
+    "Edit environment variable · Optional masking"
+  ],
+  [
+    "编辑键值 · 默认隐藏内容",
+    "Edit key / value · Hidden by default"
+  ],
+  [
+    "名称",
+    "Name"
+  ],
+  [
+    "值",
+    "Value"
+  ],
+  [
+    "隐藏内容",
+    "Hide value"
+  ],
+  [
+    "显示内容",
+    "Show value"
+  ],
+  [
+    "保存",
+    "Save"
+  ],
+  [
+    "启用此变量（写入导出）",
+    "Enable this variable (include in export)"
+  ],
+  [
+    "一次性命令参数",
+    "One-shot command arguments"
+  ],
+  [
+    "配置与依赖存放路径",
+    "Configuration and dependency folders"
+  ],
+  [
+    "用户配置目录（配置、证书与备份）",
+    "Configuration folder (settings, certificates and backups)"
+  ],
+  [
+    "运行环境与依赖目录（环境、包与缓存）",
+    "Runtime and dependency folder (runtimes, packages and caches)"
+  ],
+  [
+    "依赖不搬运，原目录保留；已有依赖需在新目录重新安装。\r\n当前使用 --data-dir：重启使用新路径，原快捷方式或命令行需自行更新。",
+    "Dependencies are not moved; the old folder remains. Reinstall existing dependencies in the new folder.\r\n--data-dir is active: restart uses the new path. Update shortcuts and command lines yourself."
+  ],
+  [
+    "依赖不搬运，原目录保留；已有依赖需在新目录重新安装。\r\n配置目录选择将保存，之后双击启动继续使用；--data-dir 可显式覆盖。",
+    "Dependencies are not moved; the old folder remains. Reinstall existing dependencies in the new folder.\r\nThe configuration folder is remembered for future launches; --data-dir can override it."
+  ],
+  [
+    "保存并重启",
+    "Save and restart"
+  ],
+  [
+    "应用设置",
+    "Application settings"
+  ],
+  [
+    "登录 Windows 后启动到托盘",
+    "Start in tray after Windows login"
+  ],
+  [
+    "开机时以管理员身份启动（登录后）",
+    "Start as administrator after login"
+  ],
+  [
+    "当前已以管理员身份运行，可修改管理员启动选项。\r\n两种登录启动方式互斥；管理员启动使用当前用户的计划任务。",
+    "Running as administrator. Administrator startup can be changed.\r\nLogin startup modes are mutually exclusive; administrator mode uses a per-user scheduled task."
+  ],
+  [
+    "当前为普通权限，管理员启动选项仅管理员可以变更。\r\n请先点击下方按钮并同意 Windows UAC 授权。",
+    "Running without elevation. Only administrators can change administrator startup.\r\nUse the button below and approve the Windows UAC prompt."
+  ],
+  [
+    "以管理员身份重启",
+    "Restart as administrator"
+  ],
+  [
+    "运行环境与依赖…",
+    "Runtimes and dependencies…"
+  ],
+  [
+    "配置与依赖路径…",
+    "Storage folders…"
+  ],
+  [
+    "重启会停止当前网关；自动运行的服务将按原配置重新启动。\r\n各服务自动运行开关决定启动哪些服务。移动目录后重新保存启动设置。",
+    "Restart stops gateways. Auto-start services resume with saved settings.\r\nEach service controls auto-start. Save startup settings again after moving the application."
+  ],
+  [
+    "生成 / 检查",
+    "Generate / Check"
+  ],
+  [
+    "导出 CA",
+    "Export CA"
+  ],
+  [
+    "信任本机 CA",
+    "Trust local CA"
+  ],
+  [
+    "取消信任",
+    "Remove trust"
+  ],
+  [
+    "重建 CA",
+    "Rebuild CA"
+  ],
+  [
+    "操作正在进行",
+    "An operation is in progress"
+  ],
+  [
+    "无法预览请求",
+    "Cannot preview the request"
+  ],
+  [
+    "发送内容预览 · 不含 API Key",
+    "Request preview · API Key excluded"
+  ],
+  [
+    "确认发送",
+    "Confirm and send"
+  ],
+  [
+    "来源：{}\n{}",
+    "Source: {}\n{}"
+  ],
+  [
+    "资料合计超过 256 KiB，请粘贴精简内容",
+    "Documents exceed 256 KiB. Paste shorter content."
+  ],
+  [
+    "连接成功，模型返回有效文本；此测试会产生一次 API 请求。",
+    "Connected; the model returned valid text. This test sent one API request."
+  ],
+  [
+    "处理中… 可取消，不会执行安装或命令",
+    "Working… You can cancel. No commands or installations will run."
+  ],
+  [
+    "启动方式 / 外部程序",
+    "Launch mode / External program"
+  ],
+  [
+    "应用管理",
+    "Application managed"
+  ],
+  [
+    "应用管理 {}（保留完整命令）",
+    "Managed {} (full command preserved)"
+  ],
+  [
+    "包类型 / 包名 / 版本 / 入口",
+    "Package type / Name / Version / Entry"
+  ],
+  [
+    "常驻启动参数",
+    "Service arguments"
+  ],
+  [
+    "环境 {}{}",
+    "Environment {}{}"
+  ],
+  [
+    "（必填）",
+    " (required)"
+  ],
+  [
+    "已有值（不显示）",
+    "Existing value (hidden)"
+  ],
+  [
+    "未设置",
+    "Not set"
+  ],
+  [
+    "待填写：{}",
+    "Needs input: {}"
+  ],
+  [
+    "沿用已有值（不显示）",
+    "Keep existing value (hidden)"
+  ],
+  [
+    "{label}\r\n勾选字段后填入草稿；环境变量需选中行并填写实际值。",
+    "{label}\r\nSelect fields to fill into the draft. Select environment rows and enter actual values locally."
+  ],
+  [
+    "{}\r\n\r\n{}\r\n\r\n安装：{} / {} / {}\r\n入口：{}{}\r\n\r\n常驻参数：\r\n",
+    "{}\r\n\r\n{}\r\n\r\nPackage: {} / {} / {}\r\nEntry: {}{}\r\n\r\nService arguments:\r\n"
+  ],
+  [
+    "安装时解析并固定",
+    "Resolve and pin during installation"
+  ],
+  [
+    "\r\n环境变量（值只在本机填写）：\r\n",
+    "\r\nEnvironment variables (enter values locally):\r\n"
+  ],
+  [
+    "必填",
+    "Required"
+  ],
+  [
+    "可选",
+    "Optional"
+  ],
+  [
+    "\r\n运行条件：\r\n",
+    "\r\nPrerequisites:\r\n"
+  ],
+  [
+    "\r\n独立一次性步骤（不作为常驻参数；安装后手动运行）：\r\n",
+    "\r\nSeparate one-shot steps (not service arguments; run manually after installation):\r\n"
+  ],
+  [
+    "{}. {}\r\n参数数组：{}\r\n",
+    "{}. {}\r\nArgument array: {}\r\n"
+  ],
+  [
+    "\r\n不确定项：\r\n",
+    "\r\nUncertainties:\r\n"
+  ],
+  [
+    "\r\n资料来源（模型声明，请核对）：\r\n",
+    "\r\nSources (model claims; verify them):\r\n"
+  ],
+  [
+    "资料已读取，可编辑后生成方案；不会安装。",
+    "Documents loaded. Edit them before generating; nothing will be installed."
+  ],
+  [
+    "方案已生成，请核对来源与参数；可返回资料页补充要求后重新生成。",
+    "Proposal generated. Check sources and arguments; return to the first tab to revise requirements."
+  ],
+  [
+    "AI 设置已加密保存；服务配置尚未保存。",
+    "AI settings saved with encryption. Service profile has not been saved."
+  ],
+  [
+    "步骤无效",
+    "Invalid step"
+  ],
+  [
+    "一次性步骤 · 安装后手动运行",
+    "One-shot steps · Run manually after installation"
+  ],
+  [
+    "请先选中一条环境变量行",
+    "Select an environment variable row first"
+  ],
+  [
+    "请选择环境变量",
+    "Select an environment variable"
+  ],
+  [
+    "请保留方案中的变量名称",
+    "Keep the variable names from the proposal"
+  ],
+  [
+    "请填写实际值，不能使用占位内容",
+    "Enter an actual value, not a placeholder"
+  ],
+  [
+    "已在本机填写（不发送给 AI）",
+    "Entered locally (not sent to AI)"
+  ],
+  [
+    "请先生成方案",
+    "Generate a proposal first"
+  ],
+  [
+    "包不存在，请修正方案",
+    "Package not found. Correct the proposal."
+  ],
+  [
+    "请至少勾选一个字段",
+    "Select at least one field"
+  ],
+  [
+    "请从本地服务进入以填入配置",
+    "Open from a local service to fill in configuration"
+  ],
+  [
+    "只填入未保存草稿，不安装、不执行、不启动。\r\n{}\r\n{}\r\n{}",
+    "Fill an unsaved draft only; no install, execution or start.\r\n{}\r\n{}\r\n{}"
+  ],
+  [
+    "注意：原完整命令仍优先，需手动清空后才采用托管配置。",
+    "The original full command still takes priority. Clear it manually to use managed settings."
+  ],
+  [
+    "部分必填环境变量尚未填写，请保存后在环境页补齐。",
+    "Some required variables are still missing. Fill them on the Environment tab after saving."
+  ],
+  [
+    "确认填入草稿",
+    "Confirm draft changes"
+  ],
+  [
+    "正在取消… 输入会保留",
+    "Cancelling… Input will be retained"
+  ],
+  [
+    "AI 安装向导",
+    "AI setup wizard"
+  ],
+  [
+    "正在取消请求并关闭…",
+    "Cancelling the request and closing…"
+  ],
+  [
+    "AI 辅助 MCP 安装向导",
+    "AI-assisted MCP Setup Wizard"
+  ],
+  [
+    "1. 资料与 API",
+    "1. Documents and API"
+  ],
+  [
+    "2. 分析结果",
+    "2. Analysis"
+  ],
+  [
+    "3. 审核填写",
+    "3. Review and apply"
+  ],
+  [
+    "仓库 URL",
+    "Repository URL"
+  ],
+  [
+    "公开 GitHub 仓库；可填分支，或直接粘贴资料。资料最多 256 KiB。",
+    "Public GitHub repository; specify a branch or paste documents. Maximum 256 KiB."
+  ],
+  [
+    "补充要求（可选）",
+    "Additional requirements (optional)"
+  ],
+  [
+    "AI 设置仅保存应用配置；连接测试会发送一次计费请求。",
+    "AI settings are saved separately. Testing sends a potentially billable request."
+  ],
+  [
+    "请核对包源验证结果、参数说明、所需变量及一次性步骤。",
+    "Review package verification, argument explanations, required variables and one-shot steps."
+  ],
+  [
+    "修改要求：返回资料页编辑后重新生成。不会携带本机填写的变量值。",
+    "To revise requirements, return to the first tab and regenerate. Locally entered variable values are never sent."
+  ],
+  [
+    "完整命令保持原样且优先；不确定的安装方案需要人工核实。",
+    "The original full command is preserved and takes priority. Verify uncertain installation methods manually."
+  ],
+  [
+    "分支（可选）",
+    "Branch (optional)"
+  ],
+  [
+    "显示密钥",
+    "Show key"
+  ],
+  [
+    "保存 AI 设置",
+    "Save AI settings"
+  ],
+  [
+    "读取仓库资料",
+    "Read repository"
+  ],
+  [
+    "预览并生成方案",
+    "Preview and generate"
+  ],
+  [
+    "下一步：审核填写",
+    "Next: Review and apply"
+  ],
+  [
+    "查看 / 复制一次性步骤",
+    "View / Copy one-shot steps"
+  ],
+  [
+    "填写选中的环境变量",
+    "Enter selected variable"
+  ],
+  [
+    "填入勾选项到草稿",
+    "Fill selected draft fields"
+  ],
+  [
+    "取消请求",
+    "Cancel request"
+  ],
+  [
+    "填入配置后仍需手动保存、安装和启动。AI 不具备命令执行权限。",
+    "After applying, save, install and start manually. AI cannot execute commands."
+  ],
+  [
+    "勾选字段",
+    "Select fields"
+  ],
+  [
+    "原值",
+    "Previous value"
+  ],
+  [
+    "建议值 / 说明",
+    "Suggested value / Explanation"
+  ],
+  [
+    "未设置参数",
+    "No arguments"
+  ],
+  [
+    "（空参数）",
+    "(empty argument)"
+  ],
+  [
+    "上移",
+    "Move up"
+  ],
+  [
+    "下移",
+    "Move down"
+  ],
+  [
+    "已自动清理 {changed} 项参数首尾的空格、换行等空白。\r\n参数内部的空格及空参数保持不变。",
+    "Removed leading / trailing whitespace from {changed} argument(s).\r\nInternal spaces and empty arguments are preserved."
+  ],
+  [
+    "参数已整理",
+    "Arguments normalized"
+  ],
+  [
+    "参数数量已达到 6000 项上限",
+    "The maximum of 6000 arguments has been reached"
+  ],
+  [
+    "参数",
+    "Arguments"
+  ],
+  [
+    "仅填写临时参数，不填 uvx / npx 或包名；下一步预览，不写入服务参数。",
+    "Enter temporary arguments only, without uvx / npx or a package name. Preview next; service arguments stay unchanged."
+  ],
+  [
+    "每项一个输入框，首尾空白自动清理；内部空格、引号及空参数保留。",
+    "One input per argument. Trim outer whitespace; preserve internal spaces, quotes and empty arguments."
+  ],
+  [
+    "＋ 添加参数",
+    "＋ Add argument"
+  ],
+  [
+    "自动清理首尾空白；内部空格保留。空参数不需要时请删除该行。",
+    "Outer whitespace is trimmed; internal spaces remain. Delete the row if you do not need an empty argument."
+  ],
+  [
+    "预览命令",
+    "Preview command"
+  ],
+  [
+    "确认参数",
+    "Confirm arguments"
+  ],
+  [
+    "{error}（类型：{}，包名：{:?}）",
+    "{error} (type: {}, package: {:?})"
+  ],
+  [
+    "另一个操作正在进行",
+    "Another operation is in progress"
+  ],
+  [
+    "请选择运行环境",
+    "Select a runtime"
+  ],
+  [
+    "安装 {} {}？\r\n来源：{}\r\n目录：{}\r\n将校验固定 SHA256。",
+    "Install {} {}?\r\nSource: {}\r\nFolder: {}\r\nThe pinned SHA256 will be verified."
+  ],
+  [
+    "请从本地服务的依赖按钮进入",
+    "Open from the dependency button of a local service"
+  ],
+  [
+    "安装 {} 包 {} {}？\r\n启动入口：{}\r\n服务目录：{}\r\n包安装可能执行第三方代码。完成后需保存服务并应用重启。",
+    "Install {} package {} {}?\r\nEntry: {}\r\nService folder: {}\r\nPackage installation may execute third-party code. Save the service and apply a restart afterward."
+  ],
+  [
+    "（解析当前版本并固定）",
+    "(resolve and pin current version)"
+  ],
+  [
+    "自动选择唯一入口",
+    "Auto-select the only entry"
+  ],
+  [
+    "删除所选运行环境？被配置或运行中服务引用时会拒绝。",
+    "Delete the selected runtime? Deletion is blocked while referenced by a profile or running service."
+  ],
+  [
+    "清理共享下载缓存？已安装的包目录会保留。",
+    "Clear shared download caches? Installed package folders will be kept."
+  ],
+  [
+    "删除此服务的所有依赖版本？运行中会拒绝，之后需要重新安装。",
+    "Delete all dependency versions of this service? Running services block deletion; reinstall afterward."
+  ],
+  [
+    "未知操作",
+    "Unknown operation"
+  ],
+  [
+    "确认依赖操作",
+    "Confirm dependency operation"
+  ],
+  [
+    "请从服务的依赖管理进入",
+    "Open from service dependency management"
+  ],
+  [
+    "程序与参数：\r\n{command}\r\n\r\n工作目录：{}\r\n\r\n使用已安装的固定版本，不临时下载 MCP 包。\r\n按当前网络设置运行；向导可能联网、修改其他客户端配置或安装插件。\r\n不会修改系统 PATH；第三方程序的行为由你在终端中确认。\r\n终端与 GUI 独立，关闭终端会清理它管理的命令进程树。\r\n服务启动参数保持不变。",
+    "Program and arguments:\r\n{command}\r\n\r\nWorking directory: {}\r\n\r\nUses the installed pinned version; no temporary MCP downloads.\r\nUses current network settings. The wizard may access the network, modify client configurations or install plugins.\r\nGlobal PATH is unchanged. Review third-party actions in the terminal.\r\nThe terminal is independent; closing it cleans up its command process tree.\r\nService arguments remain unchanged."
+  ],
+  [
+    "[隐藏]",
+    "[hidden]"
+  ],
+  [
+    "一次性命令预览",
+    "One-shot command preview"
+  ],
+  [
+    "确认并打开终端",
+    "Confirm and open terminal"
+  ],
+  [
+    "已打开交互终端（PID {pid}）。请在终端中完成向导。\r\n完成后关闭终端；正常启动 MCP 时不要将 setup 填入服务启动参数。",
+    "Interactive terminal opened (PID {pid}). Complete the wizard there.\r\nClose the terminal afterward. Do not put setup in normal service arguments."
+  ],
+  [
+    "一次性命令已启动",
+    "One-shot command started"
+  ],
+  [
+    "依赖操作结果",
+    "Dependency operation result"
+  ],
+  [
+    "请从本地服务进入",
+    "Open from a local service"
+  ],
+  [
+    "编辑托管包启动参数",
+    "Edit managed package arguments"
+  ],
+  [
+    "识别为 {}：{} {}\r\n将保留原始命令，仅填写依赖表单；不会安装。\r\n其余参数会填入服务启动参数。setup / install-addon 等一次性步骤请改用“一次性命令”入口，勿作为常驻服务参数。",
+    "Detected {}: {} {}\r\nOriginal command is preserved; only the dependency form is filled. Nothing is installed.\r\nRemaining arguments become service arguments. Use the one-shot command entry for setup / install-addon steps, not persistent service arguments."
+  ],
+  [
+    "转换预览",
+    "Conversion preview"
+  ],
+  [
+    "无法安全识别此命令，请手动填写包、版本和启动入口；原始命令不会执行。",
+    "Cannot safely recognize this command. Enter the package, version and entry manually. The original command will not execute."
+  ],
+  [
+    "网络设置已确认，将在关闭窗口后保存。安装任务使用当前表单值。",
+    "Network settings confirmed; saved after closing this window. Installation uses the current form values."
+  ],
+  [
+    "网络设置",
+    "Network settings"
+  ],
+  [
+    "正在取消操作，请等待完成后关闭窗口",
+    "Cancelling operation. Wait before closing the window."
+  ],
+  [
+    "运行环境与依赖",
+    "Runtimes and dependencies"
+  ],
+  [
+    "运行环境与 MCP 依赖 · 不修改系统环境",
+    "Runtimes and MCP Dependencies · No global environment changes"
+  ],
+  [
+    "HTTP 代理（留空直连）",
+    "HTTP proxy (blank for direct)"
+  ],
+  [
+    "代理用户名",
+    "Proxy username"
+  ],
+  [
+    "代理密码",
+    "Proxy password"
+  ],
+  [
+    "npm 包源",
+    "npm registry"
+  ],
+  [
+    "Python 包源",
+    "Python index"
+  ],
+  [
+    "显示密码",
+    "Show password"
+  ],
+  [
+    "确认网络设置",
+    "Confirm network settings"
+  ],
+  [
+    "安装所选环境",
+    "Install runtime"
+  ],
+  [
+    "删除所选环境",
+    "Delete runtime"
+  ],
+  [
+    "清理缓存",
+    "Clear cache"
+  ],
+  [
+    "可先勾选应用管理、填写包名并保存，无需安装。\r\n安装时：npm → Node.js；Python → uv + Python。\r\nsetup 请在安装后通过一次性命令运行。",
+    "Enable managed mode, enter a package and save without installing.\r\nInstallation: npm → Node.js; Python → uv + Python.\r\nRun setup separately after installation."
+  ],
+  [
+    "包名称",
+    "Package name"
+  ],
+  [
+    "版本（空=当前）",
+    "Version (blank = current)"
+  ],
+  [
+    "入口（空=唯一入口）",
+    "Entry (blank = single entry)"
+  ],
+  [
+    "服务依赖请从本地服务的“管理此服务依赖”进入。",
+    "For service dependencies, open Package and dependencies from a local service."
+  ],
+  [
+    "使用应用管理的运行环境",
+    "Use application-managed runtimes"
+  ],
+  [
+    "编辑启动参数…",
+    "Edit launch arguments…"
+  ],
+  [
+    "一次性命令 / 安装向导…",
+    "One-shot command / Setup wizard…"
+  ],
+  [
+    "安装 / 更新服务依赖",
+    "Install / Update service package"
+  ],
+  [
+    "从原始命令识别",
+    "Detect from original command"
+  ],
+  [
+    "删除服务依赖",
+    "Delete service packages"
+  ],
+  [
+    "取消当前操作",
+    "Cancel operation"
+  ],
+  [
+    "安装日志（密钥隐藏，限制容量）",
+    "Installation log (bounded, secrets redacted)"
+  ],
+  [
+    "保存并关闭",
+    "Save and close"
+  ],
+  [
+    "没有可用端口",
+    "No available port"
+  ],
+  [
+    "找不到程序 {command}。npx 需要 Node.js，uvx 需要 uv；请安装后重开应用，或选择完整路径。",
+    "Program not found: {command}. npx needs Node.js and uvx needs uv. Install it and reopen the GUI, or choose a full path."
+  ],
+  [
+    "环境变量占位符缺少 }，字面量 $ 请写 $$",
+    "Environment placeholder is missing }. Escape a literal $ as $$."
+  ],
+  [
+    "环境变量名称无效",
+    "Invalid environment variable name"
+  ],
+  [
+    "环境变量未设置：{name}",
+    "Environment variable is not set: {name}"
+  ],
+  [
+    "请输入服务名称",
+    "Enter a service name"
+  ],
+  [
+    "端口必须为 1–65535",
+    "Port must be 1–65535"
+  ],
+  [
+    "输出协议无效",
+    "Invalid output protocol"
+  ],
+  [
+    "路径必须以 / 开头，不能有空格、查询参数或 //",
+    "Paths must start with / and contain no spaces, query strings or //"
+  ],
+  [
+    "连接路径与健康检查或消息路径冲突",
+    "Endpoint conflicts with the health or message path"
+  ],
+  [
+    "会话超时须为正数，且不超过 30 天",
+    "Session timeout must be positive and no more than 30 days"
+  ],
+  [
+    "日志级别无效",
+    "Invalid log level"
+  ],
+  [
+    "键值不能有空名称、重复名称或 NUL 字符",
+    "Names must be nonempty and unique; names and values cannot contain NUL"
+  ],
+  [
+    "环境变量名称不能包含 =",
+    "Environment names cannot contain ="
+  ],
+  [
+    "附加程序目录须为绝对目录路径，不含分号、引号或换行；请用目录选择按钮添加",
+    "Additional program folders must be absolute paths without semicolons, quotes or newlines. Use the folder picker."
+  ],
+  [
+    "附加程序目录不存在：{dir}",
+    "Additional program folder does not exist: {dir}"
+  ],
+  [
+    "托管模式不允许覆盖 PATH、缓存和解释器等保留变量；请使用“附加程序目录”添加 Blender 等外部程序路径。",
+    "Managed mode reserves PATH, cache and interpreter variables. Use Additional program directories for Blender or other external programs."
+  ],
+  [
+    "请求头名称或内容无效",
+    "Invalid header name or value"
+  ],
+  [
+    "请填写程序名 / 完整启动命令；尚未安装 MCP 时，可选择“应用管理的 npm / Python 包”，点击“配置包与安装依赖”，填写包名后保存，无需先安装或运行 setup。",
+    "Enter a program or full command. For an uninstalled MCP, select Managed npm / Python package and enter a package name; neither installation nor setup is required to save."
+  ],
+  [
+    "工作目录不存在",
+    "Working directory does not exist"
+  ],
+  [
+    "服务来源无效",
+    "Invalid service source"
+  ],
+  [
+    "监听地址须为 0.0.0.0、127.0.0.1 或本机网卡的 IPv4 地址",
+    "Listen address must be 0.0.0.0, 127.0.0.1 or a local adapter IPv4 address"
+  ],
+  [
+    "无法监听 {}:{}：{e}。请检查端口占用或刷新网卡地址。",
+    "Cannot listen on {}:{}: {e}. Check port conflicts or refresh adapter addresses."
+  ],
+  [
+    "上游网关 JSON 无法包含 HTTPS 入口。请由 GUI 管理此服务，并复制 HTTPS 地址或 Codex TOML。",
+    "Upstream gateway JSON cannot include the HTTPS listener. Manage this service in the GUI and copy the HTTPS address or Codex TOML."
+  ],
+  [
+    "# SuperGateway 服务：{}\r\n# 粘贴到 Codex config.toml；先启动 GUI 中对应服务。\r\n[mcp_servers.{}]\r\n",
+    "# SuperGateway service: {}\r\n# Paste into Codex config.toml; start the service in the GUI first.\r\n[mcp_servers.{}]\r\n"
+  ],
+  [
+    "此客户端导出仅支持 Streamable HTTP；请切换输出协议，保存并在运行中应用重启。不生成 stdio 桥接配置。",
+    "This client export requires Streamable HTTP. Change the output protocol, save and apply a restart. No stdio bridge is generated."
+  ],
+  [
+    "Codex 的 MCP 配置不支持直接连接 WebSocket。请选择 Streamable HTTP 输出，保存配置；运行中请应用并重启。",
+    "Codex MCP settings cannot connect directly to WebSocket. Select Streamable HTTP, save and apply a restart."
+  ],
+  [
+    "无法导出此输出协议的 Codex 配置",
+    "Cannot export Codex settings for this output protocol"
+  ],
+  [
+    "配置必须包含 mcpServers 对象",
+    "Configuration must contain an mcpServers object"
+  ],
+  [
+    "配置必须为对象",
+    "Configuration must be an object"
+  ],
+  [
+    "暂不支持网关字段 {key}",
+    "Unsupported gateway field: {key}"
+  ],
+  [
+    "服务必须为对象",
+    "Service must be an object"
+  ],
+  [
+    "{name}：客户端字段 {key} 已忽略",
+    "{name}: ignored client field {key}"
+  ],
+  [
+    "暂不支持字段 {key}，未导入此服务",
+    "Unsupported field {key}; service was not imported"
+  ],
+  [
+    "{k} 必须为字符串",
+    "{k} must be a string"
+  ],
+  [
+    "{k} 必须为布尔值",
+    "{k} must be a boolean"
+  ],
+  [
+    "{k} 必须为对象",
+    "{k} must be an object"
+  ],
+  [
+    "键值内容必须为字符串",
+    "Key / value contents must be strings"
+  ],
+  [
+    "超时须为整数",
+    "Timeout must be an integer"
+  ],
+  [
+    "监听地址须为 IPv4 地址，不支持主机名",
+    "Listen address must be IPv4; hostnames are unsupported"
+  ],
+  [
+    "服务来源冲突",
+    "Conflicting service sources"
+  ],
+  [
+    "远程协议无效",
+    "Invalid remote protocol"
+  ],
+  [
+    "{name}：stdio 输出转为 GUI 管理的 HTTP 网络输出",
+    "{name}: converted stdio output to GUI-managed HTTP output"
+  ],
+  [
+    "{name}：端口重复，改用 {}",
+    "{name}: duplicate port; using {}"
+  ],
+  [
+    "{name}：重名，保存为 {}",
+    "{name}: duplicate name; saved as {}"
+  ],
+  [
+    "{}：可转换为托管 {} 依赖 {}；仅识别，不安装。",
+    "{}: recognized managed {} dependency {}; no installation performed."
+  ],
+  [
+    "✓ {}：{} → {}，端口 {}",
+    "✓ {}: {} → {}, port {}"
+  ],
+  [
+    "需要字符串数组",
+    "Expected an array of strings"
+  ],
+  [
+    "base_url 必须为 HTTP/HTTPS API 前缀，例如 https://api.example.com/v1",
+    "base_url must be an HTTP/HTTPS API prefix, e.g. https://api.example.com/v1"
+  ],
+  [
+    "base_url 应填写 API 前缀，不含查询参数或 /chat/completions",
+    "base_url must be an API prefix without query parameters or /chat/completions"
+  ],
+  [
+    "请填写有效 model；API Key 和 model 不能含换行",
+    "Enter a valid model; API Key and model cannot contain newlines"
+  ],
+  [
+    "创建 AI 网络请求",
+    "Create AI network request"
+  ],
+  [
+    "无效的 HTTP 请求地址或认证值",
+    "Invalid HTTP URL or authentication value"
+  ],
+  [
+    "设置 AI 网络超时",
+    "Set AI network timeout"
+  ],
+  [
+    "设置代理认证失败",
+    "Could not set proxy authentication"
+  ],
+  [
+    "网络请求超时",
+    "Network request timed out"
+  ],
+  [
+    "请求失败，请检查地址、代理、证书或网络连接",
+    "Request failed. Check the address, proxy, certificates and network connection"
+  ],
+  [
+    "无法读取 HTTP 状态",
+    "Cannot read HTTP status"
+  ],
+  [
+    "读取响应失败",
+    "Could not read response"
+  ],
+  [
+    "响应过长（上限 {limit} 字节）",
+    "Response too long (limit {limit} bytes)"
+  ],
+  [
+    "认证失败或无访问权限",
+    "Authentication failed or access denied"
+  ],
+  [
+    "地址、模型或包不存在",
+    "Address, model or package not found"
+  ],
+  [
+    "代理认证失败",
+    "Proxy authentication failed"
+  ],
+  [
+    "请求限流或额度不足",
+    "Rate limit or quota exceeded"
+  ],
+  [
+    "请求重定向，请直接填写最终地址",
+    "Request redirected. Enter the final address directly"
+  ],
+  [
+    "服务返回错误；未展示可能含密钥的响应正文",
+    "Server returned an error; response body withheld because it may contain secrets"
+  ],
+  [
+    "无法生成 AI 请求",
+    "Cannot create AI request"
+  ],
+  [
+    "接口未返回有效 JSON",
+    "The API did not return valid JSON"
+  ],
+  [
+    "接口未返回 choices[0].message.content 文本",
+    "The API did not return choices[0].message.content text"
+  ],
+  [
+    "[已隐藏]",
+    "[redacted]"
+  ],
+  [
+    "自动读取仅支持公开 https://github.com/ 仓库；其他来源请粘贴文档",
+    "Automatic reading supports public https://github.com/ repositories only; paste documents for other sources"
+  ],
+  [
+    "请填写 GitHub 仓库根地址，或 /tree/分支；也可在独立分支框填写分支名",
+    "Enter a GitHub repository root or /tree/branch URL, or use the branch field"
+  ],
+  [
+    "无效的分支名",
+    "Invalid branch name"
+  ],
+  [
+    "GitHub 仓库元数据无效",
+    "Invalid GitHub repository metadata"
+  ],
+  [
+    "无法识别默认分支",
+    "Cannot determine default branch"
+  ],
+  [
+    "GitHub 提交信息无效",
+    "Invalid GitHub commit response"
+  ],
+  [
+    "无法确定仓库提交",
+    "Cannot determine repository commit"
+  ],
+  [
+    "文档不是 UTF-8",
+    "Document is not UTF-8"
+  ],
+  [
+    "未找到可读资料，请粘贴 README",
+    "No readable documents found. Paste a README."
+  ],
+  [
+    "AI 未返回配置 JSON，请补充资料后重新生成",
+    "AI did not return configuration JSON. Add documentation and regenerate."
+  ],
+  [
+    "AI 返回 JSON 不完整",
+    "AI returned incomplete JSON"
+  ],
+  [
+    "AI 方案字段或 JSON 格式无效，请重新生成",
+    "Invalid AI proposal fields or JSON. Regenerate the proposal."
+  ],
+  [
+    "AI 返回不支持的安装类型",
+    "Unsupported AI installation type"
+  ],
+  [
+    "AI 方案条目过多",
+    "Too many proposal entries"
+  ],
+  [
+    "方案无效",
+    "Invalid proposal"
+  ],
+  [
+    "AI 方案过长",
+    "AI proposal is too long"
+  ],
+  [
+    "启动参数必须是单行字符串，不接受多行命令",
+    "Launch arguments must be single-line strings; multiline commands are not accepted"
+  ],
+  [
+    "AI 返回无效的环境变量名称",
+    "AI returned an invalid environment name"
+  ],
+  [
+    "托管包方案不能包含完整命令",
+    "Managed package proposals cannot contain a full command"
+  ],
+  [
+    "外部程序方案必须是单个程序名或路径，不接受 shell 表达式",
+    "An external program must be one program name or path, without shell expressions"
+  ],
+  [
+    "脚本解释器方案仅供阅读，请使用 unsupported 类型并手动配置",
+    "Script interpreter proposals are read-only. Use unsupported and configure manually."
+  ],
+  [
+    "环境变量名不能重复（不区分大小写）",
+    "Environment names must be unique (case-insensitive)"
+  ],
+  [
+    "请先读取或粘贴仓库资料",
+    "Read or paste repository documentation first"
+  ],
+  [
+    "资料上限 256 KiB，补充要求上限 16 KiB",
+    "Documents are limited to 256 KiB and requirements to 16 KiB"
+  ],
+  [
+    "包源已确认版本 {v}（尚未安装）",
+    "Registry confirmed version {v} (not installed)"
+  ],
+  [
+    "包或指定版本不存在：请修正方案，不能填入托管依赖",
+    "Package or version does not exist. Correct the proposal before applying."
+  ],
+  [
+    "未能验证包：{e}；采用前请人工确认",
+    "Could not verify package: {e}. Verify manually before applying."
+  ],
+  [
+    "外部程序 / 不支持类型：未验证可安装性",
+    "External / Unsupported: installation has not been verified"
+  ],
+  [
+    "包源元数据不是 JSON",
+    "Registry metadata is not JSON"
+  ],
+  [
+    "未找到当前版本",
+    "Current version not found"
+  ],
+  [
+    "未识别包源文件列表",
+    "Unrecognized registry file list"
+  ],
+  [
+    "存在可用发行版，安装时固定实际版本",
+    "A distribution exists; the actual version will be pinned during installation"
+  ],
+  [
+    "未识别包源版本",
+    "Unrecognized registry version"
+  ],
+  [
+    "此方案仅供阅读，GUI 不支持直接填入",
+    "This proposal is read-only; direct application is unsupported"
+  ],
+  [
+    "环境变量不在审核方案中",
+    "Environment variable is not part of the reviewed proposal"
+  ],
+  [
+    "请为 {} 填写实际值，或取消该项勾选",
+    "Enter an actual value for {}, or deselect it"
+  ],
+  [
+    "{} 由托管运行环境控制，请使用附加目录设置 PATH",
+    "{} is controlled by the managed runtime. Use additional folders to extend PATH."
+  ],
+  [
+    "过长",
+    "Too long"
+  ],
+  [
+    "环境变量名称不能为空、包含 = / NUL 或重复（名称不区分大小写）",
+    "Environment names must be nonempty and unique, without = or NUL (case-insensitive)"
+  ],
+  [
+    "\r\n尚不能启动：{error}\r\n",
+    "\r\nNot ready to start: {error}\r\n"
+  ],
+  [
+    "托管模式保留变量 {key}，请删除覆盖项；PATH 请使用附加程序目录。",
+    "Managed mode reserves {key}; remove the override. Extend PATH using additional program folders."
+  ],
+  [
+    "继承 GUI 启动环境：{}\r\n实际启动方式：{}\r\n{}\r\n最终 PATH（由上到下）：\r\n{}\r\n\r\n变量来源（值隐藏）：\r\n",
+    "Inherit GUI startup environment: {}\r\nActual launch mode: {}\r\n{}\r\nFinal PATH (first to last):\r\n{}\r\n\r\nVariable sources (values hidden):\r\n"
+  ],
+  [
+    "完整启动命令优先",
+    "Full command takes priority"
+  ],
+  [
+    "固定托管包入口",
+    "Pinned managed package entry"
+  ],
+  [
+    "已有程序与参数",
+    "Existing program and arguments"
+  ],
+  [
+    "合并后的目录",
+    "Merged folders"
+  ],
+  [
+    "服务注入",
+    "Service override"
+  ],
+  [
+    "Windows 基础环境",
+    "Essential Windows environment"
+  ],
+  [
+    "GUI 启动环境",
+    "GUI startup environment"
+  ],
+  [
+    "空值",
+    "Empty value"
+  ],
+  [
+    "包源不支持查询参数或 URL 认证；请填写公开的包源地址",
+    "Registry URLs cannot have query strings or embedded credentials. Use public registry URLs."
+  ],
+  [
+    "代理须为 http://主机:端口，不含路径；认证请使用独立用户名和密码字段",
+    "Proxy must be http://host:port without a path. Enter credentials in separate fields."
+  ],
+  [
+    "网络设置不能包含换行或 NUL",
+    "Network settings cannot contain newlines or NUL"
+  ],
+  [
+    "运行环境版本不在固定清单中：{kind} {version}",
+    "Runtime version is not in the pinned catalog: {kind} {version}"
+  ],
+  [
+    "依赖目录标识无效",
+    "Invalid dependency folder ID"
+  ],
+  [
+    "依赖类型须为 npm 或 Python",
+    "Dependency type must be npm or Python"
+  ],
+  [
+    "请填写包名称，不支持 URL、本地路径或安装选项",
+    "Enter a package name; URLs, local paths and installation options are unsupported"
+  ],
+  [
+    "版本须为确切版本号；留空在安装时解析当前版本",
+    "Version must be exact; leave blank to resolve current at installation"
+  ],
+  [
+    "请填写确切版本（npm 例如 1.2.3）；不支持 latest / 范围，留空选择当前版本",
+    "Enter an exact version (e.g. npm 1.2.3). latest and ranges are unsupported; blank selects current."
+  ],
+  [
+    "启动入口须为包提供的命令名，不含路径或 shell 表达式",
+    "Entry must be a command provided by the package, without paths or shell expressions"
+  ],
+  [
+    "依赖尚未安装，请点击配置包与安装依赖 → 安装",
+    "Dependencies are not installed. Open Package and dependencies → Install."
+  ],
+  [
+    "依赖尚未安装或目录已移动，请前往安装",
+    "Dependencies are missing or the folder has moved. Install them first."
+  ],
+  [
+    "依赖安装记录包含不安全的入口路径，请重新安装",
+    "Installation receipt contains an unsafe entry path. Reinstall dependencies."
+  ],
+  [
+    "依赖配置已变更，请先安装，再应用并重启",
+    "Dependency settings changed. Install first, then apply and restart."
+  ],
+  [
+    "运行环境版本不在固定清单中，请重新选择",
+    "Runtime version is not in the pinned catalog. Select it again."
+  ],
+  [
+    "缺少托管 {kind} {version}，请前往运行环境与依赖安装",
+    "Managed {kind} {version} is missing. Install it in Runtimes and dependencies."
+  ],
+  [
+    "托管启动入口缺失，请重新安装依赖",
+    "Managed launch entry is missing. Reinstall dependencies."
+  ],
+  [
+    "npm 启动入口缺失，请重新安装依赖",
+    "npm launch entry is missing. Reinstall dependencies."
+  ],
+  [
+    "Python 虚拟环境配置缺失，请重新安装依赖",
+    "Python virtual environment configuration is missing. Reinstall dependencies."
+  ],
+  [
+    "Python 虚拟环境包含原始绝对路径；数据目录已移动，请重新安装此服务依赖",
+    "Python virtual environment contains its original absolute path. The data folder has moved; reinstall this service's dependencies."
+  ],
+  [
+    "托管模式保留环境变量 {key}；请删除服务中的同名变量或切回原有模式",
+    "Managed mode reserves {key}; remove this service variable or use existing environment mode"
+  ],
+  [
+    "创建托管临时目录失败：{e}",
+    "Could not create managed temporary folder: {e}"
+  ],
+  [
+    "操作已取消",
+    "Operation cancelled"
+  ],
+  [
+    "另一个依赖操作正在进行",
+    "Another dependency operation is in progress"
+  ],
+  [
+    "下载网络请求",
+    "Runtime download request"
+  ],
+  [
+    "运行环境下载只允许 HTTPS",
+    "Runtime downloads require HTTPS"
+  ],
+  [
+    "设置代理认证",
+    "Set proxy authentication"
+  ],
+  [
+    "下载失败，请检查代理或网络",
+    "Download failed. Check the proxy and network."
+  ],
+  [
+    "读取下载状态",
+    "Read download status"
+  ],
+  [
+    "下载返回 HTTP {status}{}",
+    "Download returned HTTP {status}{}"
+  ],
+  [
+    "，请检查代理认证",
+    "; check proxy authentication"
+  ],
+  [
+    "下载中断",
+    "Download interrupted"
+  ],
+  [
+    "下载超过 512 MiB 上限",
+    "Download exceeds the 512 MiB limit"
+  ],
+  [
+    "写入下载文件失败，请检查磁盘空间：{e}",
+    "Cannot write download file. Check free disk space: {e}"
+  ],
+  [
+    "已下载 {:.1} MiB",
+    "Downloaded {:.1} MiB"
+  ],
+  [
+    "运行环境 SHA256 校验失败，未解压或安装",
+    "Runtime SHA256 mismatch. No extraction or installation performed."
+  ],
+  [
+    "压缩包包含不安全的路径",
+    "Archive contains an unsafe path"
+  ],
+  [
+    "压缩包路径越界",
+    "Archive path escapes destination"
+  ],
+  [
+    "运行环境 ZIP 不允许符号链接",
+    "Runtime ZIP cannot contain symbolic links"
+  ],
+  [
+    "解压超过 2 GiB 上限",
+    "Extracted size exceeds 2 GiB"
+  ],
+  [
+    "运行环境 TAR 不允许链接或特殊文件",
+    "Runtime TAR cannot contain links or special files"
+  ],
+  [
+    "解压目录 {}：{e}",
+    "Extract folder {}: {e}"
+  ],
+  [
+    "解压文件 {}：{e}",
+    "Extract file {}: {e}"
+  ],
+  [
+    "此运行环境已经安装",
+    "This runtime is already installed"
+  ],
+  [
+    "下载 {} {}（官方源，SHA256 校验）",
+    "Downloading {} {} (official source, SHA256 verification)"
+  ],
+  [
+    "校验通过，正在解压…",
+    "Checksum verified. Extracting…"
+  ],
+  [
+    "压缩包内缺少预期程序",
+    "Expected executable missing from archive"
+  ],
+  [
+    "运行环境安装完成",
+    "Runtime installation completed"
+  ],
+  [
+    "安装已取消，原有依赖保持可用",
+    "Installation cancelled; existing dependencies remain available"
+  ],
+  [
+    "依赖安装失败（退出码 {}），请查看日志",
+    "Dependency installation failed (exit {}). Check the log."
+  ],
+  [
+    "npm 包缺少版本",
+    "npm package has no version"
+  ],
+  [
+    "指定入口不是包提供的命令",
+    "Entry is not a command provided by this package"
+  ],
+  [
+    "npm 包没有可执行入口，请选择 MCP 包",
+    "npm package has no executable entry. Select an MCP package."
+  ],
+  [
+    "包提供多个启动入口，请填写：{}",
+    "Package has multiple entries. Specify one of: {}"
+  ],
+  [
+    "入口无效",
+    "Invalid entry"
+  ],
+  [
+    "指定入口不存在",
+    "Specified entry does not exist"
+  ],
+  [
+    "npm 入口越出服务目录",
+    "npm entry escapes the service directory"
+  ],
+  [
+    "Python 包入口无效",
+    "Invalid Python package entry"
+  ],
+  [
+    "请填写 Python 启动入口：{}",
+    "Enter a Python launch entry: {}"
+  ],
+  [
+    "指定 Python 启动入口不存在",
+    "Specified Python launch entry does not exist"
+  ],
+  [
+    "Python 启动入口文件不存在",
+    "Python launch executable does not exist"
+  ],
+  [
+    "Python 包缺少版本",
+    "Python package has no version"
+  ],
+  [
+    "安装成功，固定版本 {}；保存服务后应用并重启",
+    "Installed and pinned version {}. Save the service, then apply and restart."
+  ],
+  [
+    "管理目录：{}\r\n不会修改用户 / 系统 PATH；导入和启动不自动安装。\r\n\r\n",
+    "Managed folder: {}\r\nNo global PATH changes. Importing and starting never install dependencies automatically.\r\n\r\n"
+  ],
+  [
+    "{} {}：{}，{:.1} MiB\r\n  {}\r\n  引用：{}\r\n",
+    "{} {}: {}, {:.1} MiB\r\n  {}\r\n  References: {}\r\n"
+  ],
+  [
+    "已安装",
+    "Installed"
+  ],
+  [
+    "未安装",
+    "Not installed"
+  ],
+  [
+    "\r\n共享缓存：{:.1} MiB\r\n服务依赖：{:.1} MiB\r\n",
+    "\r\nShared cache: {:.1} MiB\r\nService dependencies: {:.1} MiB\r\n"
+  ],
+  [
+    "已安装 {}",
+    "Installed {}"
+  ],
+  [
+    "待安装 / 待应用",
+    "Installation / Restart pending"
+  ],
+  [
+    "此版本仍被服务配置或运行中服务引用，请先切换运行环境并停止服务",
+    "This version is still referenced by a profile or running service. Switch runtimes and stop the service first."
+  ],
+  [
+    "服务运行中，不能删除依赖",
+    "Cannot delete dependencies while the service is running"
+  ],
+  [
+    "请停止服务后清理共享缓存，避免影响正在使用 npx / uvx 的完整命令",
+    "Stop services before clearing shared caches; active npx / uvx full commands may use them"
+  ],
+  [
+    "缺少包内网关清单：{e}",
+    "Bundled gateway manifest missing: {e}"
+  ],
+  [
+    "缺少网关引擎：{e}",
+    "Gateway engine missing: {e}"
+  ],
+  [
+    "网关校验失败，请重新解压便携包",
+    "Gateway checksum mismatch. Extract the portable package again."
+  ],
+  [
+    "正在验证配置",
+    "Validating configuration"
+  ],
+  [
+    "HTTPS 与内部端口冲突，请重新启动服务",
+    "HTTPS conflicts with the internal port. Restart the service."
+  ],
+  [
+    "网关配置验证超时",
+    "Gateway configuration validation timed out"
+  ],
+  [
+    "上游配置验证失败，请查看日志",
+    "Upstream configuration validation failed. Check the log."
+  ],
+  [
+    "网关未开始监听，请查看日志",
+    "Gateway did not start listening. Check the log."
+  ],
+  [
+    "HTTPS 已运行；请在证书管理中信任本机 CA，再测试连接",
+    "HTTPS is running. Trust the local CA in certificate settings before testing."
+  ],
+  [
+    "点击测试连接验证 MCP 服务",
+    "Use Test connection to verify the MCP service"
+  ],
+  [
+    "失败",
+    "Failed"
+  ],
+  [
+    "网关异常退出，代码 {}",
+    "Gateway exited unexpectedly with code {}"
+  ],
+  [
+    "HTTPS 入口异常退出；已停止本服务，不回退明文 HTTP",
+    "HTTPS listener exited unexpectedly. Service stopped; plaintext HTTP fallback is disabled."
+  ],
+  [
+    "请选择导出文件",
+    "Choose an export file"
+  ],
+  [
+    "请先停止所有 HTTPS 服务，再重建 CA",
+    "Stop all HTTPS services before rebuilding the CA"
+  ],
+  [
+    "证书操作无效",
+    "Invalid certificate operation"
+  ],
+  [
+    "共享 IP 证书已检查/更新；MCP 进程与现有连接保持运行",
+    "Shared IP certificate checked / updated. MCP processes and existing connections remain running."
+  ],
+  [
+    " …（日志已截断）",
+    " … (log truncated)"
+  ],
+  [
+    "本地 CA 已到期或即将到期，请停止 HTTPS 服务后重建 CA 并重新导入公开证书",
+    "Local CA has expired or is near expiry. Stop HTTPS services, rebuild the CA and import the new public certificate."
+  ],
+  [
+    "CA 私钥记录缺失，不会覆盖现有 CA。请从备份恢复，或在证书管理中重建。",
+    "CA private key record is missing; existing CA is untouched. Restore a backup or rebuild the CA."
+  ],
+  [
+    "CA 即将到期，无法续签有效服务证书，请重建 CA",
+    "CA is near expiry and cannot renew service certificates. Rebuild the CA."
+  ],
+  [
+    "保护证书目录",
+    "Protect certificate directory"
+  ],
+  [
+    "无法限制证书目录权限（错误 {status}）；HTTPS 未启动",
+    "Cannot restrict certificate folder permissions (error {status}); HTTPS was not started"
+  ],
+  [
+    "尚未生成证书：{e}",
+    "Certificates not generated yet: {e}"
+  ],
+  [
+    "解析证书",
+    "Parse certificate"
+  ],
+  [
+    "读取证书",
+    "Read certificate"
+  ],
+  [
+    "{} 至 {}",
+    "{} to {}"
+  ],
+  [
+    "打开当前用户证书库",
+    "Open current user certificate store"
+  ],
+  [
+    "本地 CA 已过期，不能信任",
+    "Cannot trust an expired local CA"
+  ],
+  [
+    "信任本地 CA",
+    "Trust local CA"
+  ],
+  [
+    "取消信任本地 CA",
+    "Remove local CA trust"
+  ],
+  [
+    "HTTPS 证书管理\r\n\r\n所有服务共用一张证书，包含本机网卡 IPv4，服务证书默认 20 年、CA 30 年。启动时检查，运行中每分钟检查，剩余不足 30 天或新增网卡 IP 时自动补签。新连接使用新证书，现有 MCP 连接不重启。无需公网或额外进程。\r\n\r\n客户端必须信任公开 CA，不会跳过验证。Windows 导入公开 .cer 到当前用户的受信任根证书库。Node/独立证书库使用公开 .pem，配置 NODE_EXTRA_CA_CERTS。\r\n\r\n",
+    "HTTPS certificate management\r\n\r\nAll services share one certificate covering local IPv4 adapters. Service certificates default to 20 years and the CA to 30 years. Checked at startup and every minute; renewed when less than 30 days remain or adapter IPs change. New connections use the new certificate without restarting existing MCP connections. No public network or extra process is required.\r\n\r\nClients must trust the public CA; verification is never bypassed. Import .cer into the Windows current-user trusted root store. For Node / separate stores, use .pem with NODE_EXTRA_CA_CERTS.\r\n\r\n"
+  ],
+  [
+    "共享服务证书有效期：{}",
+    "Shared service certificate validity: {}"
+  ],
+  [
+    "共享服务证书尚未生成",
+    "Shared service certificate has not been generated"
+  ],
+  [
+    "{intro}CA SHA256：{fingerprint}\r\n有效期：{}\r\n状态：{}；本机当前用户{}信任\r\n公开 CA：{}\r\n\r\n私钥只保存在当前用户和 SYSTEM 可访问的证书目录，不随便携包分发，不会导出。新网卡 IP 会在下次启动/刷新入口时签发证书。CA 更换后，所有客户端都需重新导入。",
+    "{intro}CA SHA256: {fingerprint}\r\nValidity: {}\r\nStatus: {}; local user {}trusted\r\nPublic CA: {}\r\n\r\nPrivate keys stay in a folder restricted to the current user and SYSTEM. They are not distributed or exported. New adapter IPs are covered at the next startup / listener refresh. All clients must import a replacement CA."
+  ],
+  [
+    "已失效",
+    "Expired"
+  ],
+  [
+    "有效",
+    "Valid"
+  ],
+  [
+    "已",
+    "Already "
+  ],
+  [
+    "尚未",
+    "Not yet "
+  ],
+  [
+    "\r\n{server}\r\n当前网卡 IP：{sans}\r\nCA/服务私钥以 DPAPI 加密保存；公开证书不含私钥。",
+    "\r\n{server}\r\nCurrent adapter IPs: {sans}\r\nCA / service private keys are DPAPI encrypted; public certificates have no private keys."
+  ],
+  [
+    "{intro}{error}\r\n\r\n请点击“生成/检查”，或先启用并启动一个 HTTPS 服务。",
+    "{intro}{error}\r\n\r\nUse Generate / Check, or enable and start an HTTPS service."
+  ],
+  [
+    "目录设置读取失败，原文件未更改：{e}",
+    "Could not read storage settings; original file untouched: {e}"
+  ],
+  [
+    "请选择完整的绝对目录路径",
+    "Choose a full absolute folder path"
+  ],
+  [
+    "目录路径无效：{e}",
+    "Invalid folder path: {e}"
+  ],
+  [
+    "已选择的配置目录不可用：{}。请恢复目录，或使用 --data-dir 指定已有配置目录。",
+    "Selected configuration folder is unavailable: {}. Restore it or use --data-dir with an existing folder."
+  ],
+  [
+    "无法创建目录 {}：{e}",
+    "Cannot create directory {}: {e}"
+  ],
+  [
+    "目录不可写 {}：{e}",
+    "Directory is not writable {}: {e}"
+  ],
+  [
+    "配置目录包含链接，不能自动复制：{}",
+    "Configuration contains a link and cannot be copied automatically: {}"
+  ],
+  [
+    "新旧配置目录不能互相包含，请选择独立目录",
+    "Old and new configuration folders cannot contain each other. Choose independent folders."
+  ],
+  [
+    "新的配置目录必须为空，避免覆盖已有配置；原目录未修改",
+    "New configuration folder must be empty to avoid overwriting files. Original folder untouched."
+  ],
+  [
+    "配置目录不能位于依赖目录内，请分别选择目录",
+    "Configuration must not be inside the dependency folder. Choose separate folders."
+  ],
+  [
+    "无法读取原配置，原文件未更改：{e}",
+    "Cannot read original settings; original file untouched: {e}"
+  ],
+  [
+    "保存文件",
+    "Save file"
+  ],
+  [
+    "DPAPI：请使用原 Windows 账户读取配置",
+    "DPAPI: use the original Windows account to read this configuration"
+  ],
+  [
+    "客户端超时须为 1–86400 秒，留空使用客户端默认值",
+    "Client timeouts must be 1–86400 seconds or blank for defaults"
+  ],
+  [
+    "客户端变量名称不能为空、重复或包含 = / 换行 / NUL；值不能包含 NUL",
+    "Client variable names must be nonempty and unique, without = / newlines / NUL; values cannot contain NUL"
+  ],
+  [
+    "客户端 JSON 仅支持 HTTP / SSE 网络连接，请切换输出协议并应用重启。",
+    "Client JSON supports HTTP / SSE only. Change the output protocol and apply a restart."
+  ],
+  [
+    "SuperGateway · 启动失败",
+    "SuperGateway · Startup failed"
+  ],
+  [
+    "选择 MCP 工作目录",
+    "Select MCP working directory"
+  ]
+]

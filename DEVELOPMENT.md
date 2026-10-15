@@ -20,6 +20,14 @@
 
 ## 首次准备与构建
 
+### 界面语言
+
+`src/i18n.rs` 管理可选 `Settings.Language`（`system` / `zh-CN` / `en`）、Windows `GetUserDefaultUILanguage` 选择及文本匹配。旧配置默认 system，中文显示语言映射为简体中文，其余使用英文。`assets/locales/en.json` 是中文原文与英文的配对目录，通过 include_str 内置，不引入 GUI 或翻译运行时。新增翻译需保留格式占位符数量和顺序；名称、路径、程序、参数、变量与密钥不是翻译源，不可对输入值做全局替换。
+
+主窗口仅重新标注应用控件、下拉项和标签页，保留 EDIT 内容、服务状态和进程；后台 SettingsSaved 事件后应用语言。保存纯语言变更不更新登录任务。`src/help.rs` 按语言提供同样八章帮助；AI 请求只增加 response_language，不发送其他隐私数据，现有模型输出保留原文。Win32 系统按钮和第三方错误遵循各自语言。
+
+语言验证：`cargo test --release --locked --test language` 检查 DPAPI / 配置恢复 / 服务交换隔离；i18n 库测试覆盖系统语种映射、旧配置默认、目录重复 / 占位符和动态用户值保留。`desktop-checks language-ui <隔离配置目录> <GUI.exe> <mock-mcp.exe>` 验证两个真实测试 MCP 的即时切换、系统选择、中文路径、英文帮助 / AI 入口及重启恢复，已接入原生 UI 回归。不得对用户现有 GUI 或服务运行该隔离流程。
+
 从源码 ZIP 解压后，进入包含 `Cargo.toml` 的目录；从 GitHub 克隆后同样在仓库根目录执行：
 
 ```powershell
@@ -40,7 +48,7 @@ cargo build --release --locked
 
 | 文件 | 职责 |
 | --- | --- |
-| `src/main.rs`、`ui.rs`、`ui_dependencies.rs`、`help.rs` | 启动入口、原生控件、依赖管理界面和内嵌中文帮助 |
+| `src/main.rs`、`ui.rs`、`ui_dependencies.rs`、`help.rs` | 启动入口、原生控件、依赖管理界面和内嵌中英文帮助 |
 | `src/model.rs`、`store.rs`、`storage.rs` | PascalCase 配置、DPAPI、原子保存、备份和配置 / 依赖路径 |
 | `src/config.rs`、`shell.rs`、`environment.rs` | 配置校验与生成、启动解释器、每服务环境合并和 PATH |
 | `src/client.rs` | 客户端导出选项校验、稳定 Codex 表名、超时映射与网络 JSON 导出 |

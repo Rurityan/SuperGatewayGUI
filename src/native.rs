@@ -339,7 +339,7 @@ pub fn file_dialog(
     let mut buffer = vec![0u16; 32768];
     let name = wide(suggested);
     buffer[..name.len()].copy_from_slice(&name);
-    let filter = wide(filter.replace('|', "\0") + "\0");
+    let filter = wide(crate::i18n::text(filter).replace('|', "\0") + "\0");
     let mut dialog: OPENFILENAMEW = unsafe { zeroed() };
     dialog.lStructSize = size_of::<OPENFILENAMEW>() as u32;
     dialog.hwndOwner = owner;
@@ -374,7 +374,7 @@ pub fn folder_dialog(owner: HWND) -> Option<std::path::PathBuf> {
 }
 pub fn folder_dialog_title(owner: HWND, description: &str) -> Option<std::path::PathBuf> {
     use windows_sys::Win32::{System::Com::CoTaskMemFree, UI::Shell::*};
-    let title = wide(description);
+    let title = wide(crate::i18n::text(description).as_ref());
     let mut info: BROWSEINFOW = unsafe { zeroed() };
     info.hwndOwner = owner;
     info.lpszTitle = title.as_ptr();

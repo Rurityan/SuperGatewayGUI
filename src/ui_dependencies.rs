@@ -217,8 +217,8 @@ unsafe fn launch(modal: &mut Modal, action: i32) -> Result<()> {
     };
     if MessageBoxW(
         hwnd,
-        wide(prompt).as_ptr(),
-        wide("确认依赖操作").as_ptr(),
+        localized_wide(prompt).as_ptr(),
+        localized_wide("确认依赖操作").as_ptr(),
         MB_YESNO | MB_ICONWARNING,
     ) != IDYES
     {
@@ -298,8 +298,8 @@ unsafe fn one_shot(modal: &Modal) -> Result<()> {
         Some("确认并打开终端"),
     ) {
         let pid = d.manager.launch_one_shot(&d.root, &invocation, &p)?;
-        MessageBoxW(modal.hwnd, wide(format!("已打开交互终端（PID {pid}）。请在终端中完成向导。\r\n完成后关闭终端；正常启动 MCP 时不要将 setup 填入服务启动参数。")).as_ptr(),
-            wide("一次性命令已启动").as_ptr(), MB_OK);
+        MessageBoxW(modal.hwnd, localized_wide(format!("已打开交互终端（PID {pid}）。请在终端中完成向导。\r\n完成后关闭终端；正常启动 MCP 时不要将 setup 填入服务启动参数。")).as_ptr(),
+            localized_wide("一次性命令已启动").as_ptr(), MB_OK);
     }
     Ok(())
 }
@@ -396,8 +396,8 @@ pub(super) unsafe fn procedure(modal: &mut Modal, msg: u32, w: WPARAM, l: LPARAM
                             Err(error) => {
                                 MessageBoxW(
                                     modal.hwnd,
-                                    wide(error).as_ptr(),
-                                    wide("依赖操作结果").as_ptr(),
+                                    localized_wide(error).as_ptr(),
+                                    localized_wide("依赖操作结果").as_ptr(),
                                     MB_ICONWARNING,
                                 );
                             }
@@ -509,8 +509,8 @@ pub(super) unsafe fn procedure(modal: &mut Modal, msg: u32, w: WPARAM, l: LPARAM
                                 );
                                 if MessageBoxW(
                                     modal.hwnd,
-                                    wide(preview).as_ptr(),
-                                    wide("转换预览").as_ptr(),
+                                    localized_wide(preview).as_ptr(),
+                                    localized_wide("转换预览").as_ptr(),
                                     MB_YESNO | MB_ICONQUESTION,
                                 ) == IDYES
                                 {
@@ -552,11 +552,11 @@ pub(super) unsafe fn procedure(modal: &mut Modal, msg: u32, w: WPARAM, l: LPARAM
                         } else {
                             MessageBoxW(
                                 modal.hwnd,
-                                wide(
+                                localized_wide(
                                     "网络设置已确认，将在关闭窗口后保存。安装任务使用当前表单值。",
                                 )
                                 .as_ptr(),
-                                wide("网络设置").as_ptr(),
+                                localized_wide("网络设置").as_ptr(),
                                 MB_OK,
                             );
                         }
@@ -594,8 +594,8 @@ pub(super) unsafe fn procedure(modal: &mut Modal, msg: u32, w: WPARAM, l: LPARAM
             if let Err(error) = result {
                 MessageBoxW(
                     modal.hwnd,
-                    wide(error).as_ptr(),
-                    wide("运行环境与依赖").as_ptr(),
+                    localized_wide(error).as_ptr(),
+                    localized_wide("运行环境与依赖").as_ptr(),
                     MB_ICONWARNING,
                 );
             }
@@ -787,7 +787,12 @@ pub(super) unsafe fn show(
         140,
     );
     for label in ["npm 包", "Python 包"] {
-        SendMessageW(combo, CB_ADDSTRING, 0, wide(label).as_ptr() as isize);
+        SendMessageW(
+            combo,
+            CB_ADDSTRING,
+            0,
+            localized_wide(label).as_ptr() as isize,
+        );
     }
     let d = profile
         .as_ref()

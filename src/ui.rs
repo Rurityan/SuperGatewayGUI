@@ -3,6 +3,7 @@
 #![allow(clippy::too_many_arguments)]
 use gateway::{
     Result, config,
+    i18n::{self, Language},
     manager::{Event, Manager},
     model::{Pair, Profile, Settings},
     native::{self, wide},
@@ -36,6 +37,9 @@ mod argument_ui;
 #[path = "ui_dependencies.rs"]
 mod dependency_ui;
 const CF_UNICODETEXT: u32 = 13;
+fn localized_wide(value: impl AsRef<str>) -> Vec<u16> {
+    wide(i18n::text(value.as_ref()).as_ref())
+}
 const ICON_RESOURCE: *const u16 = 101 as *const u16;
 
 struct WindowIcons {
@@ -227,6 +231,7 @@ pub fn run() -> Result<()> {
     }
     let store = Store::new(root.clone())?;
     let settings = store.load()?;
+    i18n::initialize(settings.language);
     let (tx, rx) = mpsc::sync_channel(2048);
     let engine = std::env::current_exe()
         .map_err(|e| e.to_string())?
@@ -297,7 +302,7 @@ pub fn run() -> Result<()> {
         let hwnd = CreateWindowExW(
             0,
             wide("SGRustMain").as_ptr(),
-            wide("SuperGateway · Rust Win32 MCP 网关管理").as_ptr(),
+            localized_wide("SuperGateway · Rust Win32 MCP 网关管理").as_ptr(),
             WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
@@ -536,14 +541,25 @@ unsafe extern "system" fn main_proc(hwnd: HWND, message: u32, w: WPARAM, l: LPAR
             manager.poll();
             0
         }
+        WM_SETTINGCHANGE => {
+            if app.settings.language == Language::System && i18n::initialize(Language::System) {
+                app.refresh_language();
+            }
+            0
+        }
         WM_TRAY => {
             match l as u32 {
                 WM_LBUTTONDBLCLK => app.restore(),
                 WM_RBUTTONUP => {
                     let menu = CreatePopupMenu();
-                    AppendMenuW(menu, MF_STRING, 200, wide("打开主窗口").as_ptr());
-                    AppendMenuW(menu, MF_STRING, 201, wide("停止全部服务").as_ptr());
-                    AppendMenuW(menu, MF_STRING, 202, wide("彻底退出").as_ptr());
+                    AppendMenuW(menu, MF_STRING, 200, localized_wide("打开主窗口").as_ptr());
+                    AppendMenuW(
+                        menu,
+                        MF_STRING,
+                        201,
+                        localized_wide("停止全部服务").as_ptr(),
+                    );
+                    AppendMenuW(menu, MF_STRING, 202, localized_wide("彻底退出").as_ptr());
                     let mut point: POINT = zeroed();
                     GetCursorPos(&mut point);
                     SetForegroundWindow(hwnd);
@@ -684,7 +700,12 @@ impl App {
                 0
             },
             wide(class).as_ptr(),
-            wide(text).as_ptr(),
+            if class == "EDIT" {
+                wide(text)
+            } else {
+                localized_wide(text)
+            }
+            .as_ptr(),
             WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | style,
             0,
             0,
@@ -781,7 +802,12 @@ impl App {
             0,
         );
         for item in items {
-            SendMessageW(self.ctrl(id), CB_ADDSTRING, 0, wide(item).as_ptr() as isize);
+            SendMessageW(
+                self.ctrl(id),
+                CB_ADDSTRING,
+                0,
+                localized_wide(item).as_ptr() as isize,
+            );
         }
     }
     unsafe fn fonts(&mut self) {
@@ -876,7 +902,7 @@ impl App {
         .iter()
         .enumerate()
         {
-            let name = wide(text);
+            let name = localized_wide(text);
             let item = TCITEMW {
                 mask: TCIF_TEXT,
                 pszText: name.as_ptr() as *mut u16,
@@ -1448,7 +1474,19 @@ impl App {
         String::from_utf16_lossy(&text[..count as usize])
     }
     unsafe fn set(&self, id: i32, text: &str) {
-        SetWindowTextW(self.ctrl(id), wide(text).as_ptr());
+        let mut class = [0u16; 64];
+        let count = GetClassNameW(self.ctrl(id), class.as_mut_ptr(), 64);
+        let edit =
+            String::from_utf16_lossy(&class[..count.max(0) as usize]).eq_ignore_ascii_case("Edit");
+        SetWindowTextW(
+            self.ctrl(id),
+            if edit {
+                wide(text)
+            } else {
+                localized_wide(text)
+            }
+            .as_ptr(),
+        );
     }
     unsafe fn combo_index(&self, id: i32) -> i32 {
         SendMessageW(self.ctrl(id), CB_GETCURSEL, 0, 0) as i32
@@ -1486,7 +1524,7 @@ impl App {
                 self.ctrl(LAN),
                 CB_ADDSTRING,
                 0,
-                wide(label).as_ptr() as isize,
+                localized_wide(label).as_ptr() as isize,
             );
         }
         self.listen_addresses = choices.into_iter().map(|(ip, _)| ip).collect();
@@ -1512,10 +1550,86 @@ impl App {
     unsafe fn message(&self, text: &str, flags: u32) -> i32 {
         MessageBoxW(
             self.hwnd,
-            wide(text).as_ptr(),
+            localized_wide(text).as_ptr(),
             wide("SuperGateway").as_ptr(),
             flags,
         )
+    }
+    unsafe fn refresh_language(&mut self) {
+        // Only application labels are relabelled. EDITs, user names, paths,
+        // argument arrays, secrets and log contents are deliberately untouched.
+        for (&id, &control) in &self.controls {
+            let mut class = [0u16; 64];
+            let n = GetClassNameW(control, class.as_mut_ptr(), 64);
+            let class = String::from_utf16_lossy(&class[..n.max(0) as usize]);
+            if class.eq_ignore_ascii_case("Static") || class.eq_ignore_ascii_case("Button") {
+                let current = self.text(id);
+                SetWindowTextW(control, wide(i18n::relabel(&current).as_ref()).as_ptr());
+            } else if class.eq_ignore_ascii_case("ComboBox") && id != 42 && id != LAN {
+                let selected = SendMessageW(control, CB_GETCURSEL, 0, 0);
+                let count = SendMessageW(control, CB_GETCOUNT, 0, 0);
+                let mut labels = Vec::new();
+                for index in 0..count.max(0) {
+                    let len = SendMessageW(control, CB_GETLBTEXTLEN, index as usize, 0);
+                    let mut value = vec![0u16; len.max(0) as usize + 1];
+                    SendMessageW(
+                        control,
+                        CB_GETLBTEXT,
+                        index as usize,
+                        value.as_mut_ptr() as isize,
+                    );
+                    labels.push(
+                        i18n::relabel(&String::from_utf16_lossy(&value[..len.max(0) as usize]))
+                            .into_owned(),
+                    );
+                }
+                SendMessageW(control, CB_RESETCONTENT, 0, 0);
+                for label in labels {
+                    SendMessageW(control, CB_ADDSTRING, 0, wide(label).as_ptr() as isize);
+                }
+                SendMessageW(control, CB_SETCURSEL, selected as usize, 0);
+            }
+        }
+        for (index, label) in [
+            "基础配置",
+            "高级设置",
+            "环境 / 请求头 / 密钥",
+            "客户端配置 / 导出",
+        ]
+        .iter()
+        .enumerate()
+        {
+            let mut label = localized_wide(label);
+            let item = TCITEMW {
+                mask: TCIF_TEXT,
+                pszText: label.as_mut_ptr(),
+                ..zeroed()
+            };
+            SendMessageW(
+                self.ctrl(TAB),
+                TCM_SETITEMW,
+                index,
+                &item as *const _ as isize,
+            );
+        }
+        SetWindowTextW(
+            self.hwnd,
+            localized_wide("SuperGateway · Rust Win32 MCP 网关管理").as_ptr(),
+        );
+        let index = self.combo_index(LAN);
+        let address = self
+            .listen_addresses
+            .get(index.max(0) as usize)
+            .cloned()
+            .unwrap_or_else(|| "0.0.0.0".into());
+        self.refresh_addresses(&address);
+        // Rebuild only the application-owned first filter label.
+        self.log_choices.clear();
+        SendMessageW(self.ctrl(42), CB_RESETCONTENT, 0, 0);
+        self.refresh_list();
+        self.update_status();
+        self.tray(NIM_MODIFY);
+        self.layout();
     }
     unsafe fn refresh_list(&mut self) {
         SendMessageW(self.ctrl(LIST), LB_RESETCONTENT, 0, 0);
@@ -1532,7 +1646,13 @@ impl App {
                 self.ctrl(LIST),
                 LB_ADDSTRING,
                 0,
-                wide(format!("{} · {} · :{}", p.name, status, p.port)).as_ptr() as isize,
+                wide(format!(
+                    "{} · {} · :{}",
+                    p.name,
+                    i18n::text(&status),
+                    p.port
+                ))
+                .as_ptr() as isize,
             );
         }
         if let Some(i) = self.selected {
@@ -1561,7 +1681,7 @@ impl App {
                 self.ctrl(42),
                 CB_ADDSTRING,
                 0,
-                wide("全部服务").as_ptr() as isize,
+                localized_wide("全部服务").as_ptr() as isize,
             );
             for (_, name) in &self.log_choices {
                 SendMessageW(self.ctrl(42), CB_ADDSTRING, 0, wide(name).as_ptr() as isize);
@@ -1901,11 +2021,18 @@ impl App {
                 &format!(
                     "{} · {}{}",
                     p.name,
-                    state,
-                    if pending { " · 配置待应用" } else { "" }
+                    i18n::text(&state),
+                    if pending {
+                        i18n::text(" · 配置待应用")
+                    } else {
+                        "".into()
+                    }
                 ),
             );
-            self.set(5, &format!("{}   {}", p.address(false), detail));
+            self.set(
+                5,
+                &format!("{}   {}", p.address(false), i18n::text(&detail)),
+            );
         }
     }
     fn needs_install(&self, p: &Profile) -> bool {
@@ -1989,7 +2116,7 @@ impl App {
                 self.ctrl(KEYS),
                 LB_ADDSTRING,
                 0,
-                wide(format!("密钥 {}  ·  ********", i + 1)).as_ptr() as isize,
+                localized_wide(format!("密钥 {}  ·  ********", i + 1)).as_ptr() as isize,
             );
         }
     }
@@ -2130,6 +2257,9 @@ impl App {
                 }
                 Event::SettingsSaved(settings) => {
                     self.settings = settings;
+                    if i18n::initialize(self.settings.language) {
+                        self.refresh_language();
+                    }
                     self.refresh_log_filter();
                 }
                 Event::StorageChanged(root) => {
@@ -2378,7 +2508,7 @@ impl App {
                         self.exit();
                     }
                 }
-                Some(SettingsAction::Save(normal, admin)) => {
+                Some(SettingsAction::Save(normal, admin, language)) => {
                     let old = self.settings.clone();
                     if old.admin_login_startup && admin && !gateway::startup::is_elevated() {
                         return Ok(());
@@ -2386,19 +2516,22 @@ impl App {
                     let mut settings = old.clone();
                     settings.login_startup = normal;
                     settings.admin_login_startup = admin;
+                    settings.language = language;
                     let root = self.store.root.clone();
                     let custom = std::env::args().any(|v| v == "--data-dir");
                     self.worker(move |manager| {
                         if old.admin_login_startup != admin && !gateway::startup::is_elevated() {
                             return Err("修改管理员登录启动必须先以管理员身份运行".into());
                         }
-                        gateway::startup::apply(
-                            old.admin_login_startup,
-                            normal,
-                            admin,
-                            &root,
-                            custom,
-                        )?;
+                        if old.login_startup != normal || old.admin_login_startup != admin {
+                            gateway::startup::apply(
+                                old.admin_login_startup,
+                                normal,
+                                admin,
+                                &root,
+                                custom,
+                            )?;
+                        }
                         if let Err(error) = Store::new(root.clone())?.save(&settings) {
                             let rollback = gateway::startup::apply(
                                 admin,
@@ -2743,7 +2876,7 @@ impl App {
             .as_ref()
             .map(|icons| icons.small)
             .unwrap_or_else(|| LoadIconW(GetModuleHandleW(null()), ICON_RESOURCE));
-        let tip = wide("SuperGateway Rust · 双击打开");
+        let tip = localized_wide("SuperGateway Rust · 双击打开");
         data.szTip[..tip.len()].copy_from_slice(&tip);
         Shell_NotifyIconW(operation, &data) != 0
     }
@@ -2946,7 +3079,7 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
             match (w & 0xffff) as i32 {
                 504 if modal.help && (w >> 16) as u32 == LBN_SELCHANGE => {
                     let index = SendMessageW(GetDlgItem(hwnd, 504), LB_GETCURSEL, 0, 0);
-                    if let Some((_, body)) = crate::help::SECTIONS.get(index as usize) {
+                    if let Some((_, body)) = crate::help::sections().get(index as usize) {
                         SetWindowTextW(
                             GetDlgItem(hwnd, 500),
                             wide(body.replace('\n', "\r\n")).as_ptr(),
@@ -2971,8 +3104,8 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                         if modal.values.is_empty() {
                             MessageBoxW(
                                 hwnd,
-                                wide("请至少勾选一个服务").as_ptr(),
-                                wide("选择服务").as_ptr(),
+                                localized_wide("请至少勾选一个服务").as_ptr(),
+                                localized_wide("选择服务").as_ptr(),
                                 MB_OK | MB_ICONINFORMATION,
                             );
                             return 0;
@@ -2997,8 +3130,8 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                             {
                                 MessageBoxW(
                                     hwnd,
-                                    wide(error).as_ptr(),
-                                    wide("检查目录").as_ptr(),
+                                    localized_wide(error).as_ptr(),
+                                    localized_wide("检查目录").as_ptr(),
                                     MB_ICONWARNING,
                                 );
                                 return 0;
@@ -3027,8 +3160,8 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                         {
                             MessageBoxW(
                                 hwnd,
-                                wide("请输入名称和有效的密钥值").as_ptr(),
-                                wide("检查输入").as_ptr(),
+                                localized_wide("请输入名称和有效的密钥值").as_ptr(),
+                                localized_wide("检查输入").as_ptr(),
                                 MB_ICONWARNING,
                             );
                             return 0;
@@ -3044,6 +3177,9 @@ unsafe extern "system" fn modal_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM)
                             (SendMessageW(GetDlgItem(hwnd, 505), BM_GETCHECK, 0, 0)
                                 == BST_CHECKED as isize)
                                 .to_string(),
+                        );
+                        modal.values.push(
+                            SendMessageW(GetDlgItem(hwnd, 518), CB_GETCURSEL, 0, 0).to_string(),
                         );
                     }
                     modal.result = Some(true);
@@ -3153,7 +3289,7 @@ unsafe fn modal_window(
     CreateWindowExW(
         WS_EX_CONTROLPARENT,
         wide("SGRustModal").as_ptr(),
-        wide(title).as_ptr(),
+        localized_wide(title).as_ptr(),
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
         rect.left + 50 * dpi / 96,
         rect.top + 60 * dpi / 96,
@@ -3188,7 +3324,12 @@ unsafe fn modal_control(
         wide(class).as_ptr(),
         // Window creation marshals names through a bounded buffer. Assign long
         // repository documents only after the EDIT has been created.
-        wide(if class == "EDIT" { "" } else { text }).as_ptr(),
+        if class == "EDIT" {
+            wide("")
+        } else {
+            localized_wide(text)
+        }
+        .as_ptr(),
         WS_CHILD | WS_VISIBLE | style,
         x * dpi / 96,
         y * dpi / 96,
@@ -3287,14 +3428,14 @@ unsafe fn help_dialog(owner: HWND, font: HFONT) {
         170,
         500,
     );
-    for (title, _) in crate::help::SECTIONS {
+    for (title, _) in crate::help::sections() {
         SendMessageW(list, LB_ADDSTRING, 0, wide(title).as_ptr() as isize);
     }
     modal_control(
         &modal,
         500,
         "EDIT",
-        &crate::help::SECTIONS[0].1.replace('\n', "\r\n"),
+        &crate::help::sections()[0].1.replace('\n', "\r\n"),
         ES_READONLY as u32 | ES_MULTILINE as u32 | ES_AUTOVSCROLL as u32 | WS_VSCROLL | WS_TABSTOP,
         202,
         16,
@@ -3361,7 +3502,7 @@ unsafe fn service_selector(
         .iter()
         .enumerate()
     {
-        let mut text = wide(label);
+        let mut text = localized_wide(label);
         let column = LVCOLUMNW {
             mask: LVCF_TEXT | LVCF_WIDTH,
             pszText: text.as_mut_ptr(),
@@ -3388,7 +3529,7 @@ unsafe fn service_selector(
             "http" => "远程 HTTP",
             _ => "远程 SSE",
         };
-        let mut summary = wide(format!(
+        let mut summary = localized_wide(format!(
             "{source} → {} · 端口 {} · 环境 {} · PATH {} · 请求头 {} · 密钥 {} · {}",
             p.output,
             p.port,
@@ -3457,7 +3598,7 @@ unsafe fn preview(owner: HWND, font: HFONT, title: &str, text: &str, accept: Opt
         EnableWindow(owner, 1);
         MessageBoxW(
             owner,
-            wide("无法显示预览正文，操作已取消。").as_ptr(),
+            localized_wide("无法显示预览正文，操作已取消。").as_ptr(),
             wide(title).as_ptr(),
             MB_OK | MB_ICONERROR,
         );
@@ -3632,7 +3773,7 @@ unsafe fn pair_dialog_enabled(
     }
 }
 enum SettingsAction {
-    Save(bool, bool),
+    Save(bool, bool, Language),
     Restart,
     Certificate(i32),
 }
@@ -3739,7 +3880,33 @@ unsafe fn settings_dialog(
     certificates: &str,
 ) -> Option<SettingsAction> {
     let admin = gateway::startup::is_elevated();
-    let modal = modal_window(owner, font, "应用设置", 740, 630, false, false, true);
+    let modal = modal_window(owner, font, "应用设置", 740, 680, false, false, true);
+    modal_control(
+        &modal,
+        519,
+        "STATIC",
+        "界面语言 / Language",
+        0,
+        24,
+        540,
+        200,
+        28,
+    );
+    let language = modal_control(
+        &modal,
+        518,
+        "COMBOBOX",
+        "",
+        CBS_DROPDOWNLIST as u32 | WS_TABSTOP,
+        230,
+        536,
+        300,
+        150,
+    );
+    for label in ["跟随系统 / System", "简体中文", "English"] {
+        SendMessageW(language, CB_ADDSTRING, 0, wide(label).as_ptr() as isize);
+    }
+    SendMessageW(language, CB_SETCURSEL, settings.language.index(), 0);
     for (id, label, checked, y) in [
         (502, "登录 Windows 后启动到托盘", settings.login_startup, 20),
         (
@@ -3850,11 +4017,11 @@ unsafe fn settings_dialog(
         "保存",
         WS_TABSTOP | BS_DEFPUSHBUTTON as u32,
         478,
-        550,
+        600,
         100,
         32,
     );
-    modal_control(&modal, 2, "BUTTON", "取消", WS_TABSTOP, 598, 550, 100, 32);
+    modal_control(&modal, 2, "BUTTON", "取消", WS_TABSTOP, 598, 600, 100, 32);
     modal_control(
         &modal,
         514,
@@ -3904,5 +4071,12 @@ unsafe fn settings_dialog(
     Some(SettingsAction::Save(
         modal.values[0] == "true",
         modal.values[1] == "true",
+        Language::from_index(
+            modal
+                .values
+                .get(2)
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0),
+        ),
     ))
 }
