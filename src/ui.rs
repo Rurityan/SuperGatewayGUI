@@ -95,6 +95,7 @@ impl Drop for WindowIcons {
 const WM_TRAY: u32 = WM_APP + 1;
 const WM_SCROLL_FORM: u32 = WM_APP + 2;
 const WM_EXIT_READY: u32 = WM_APP + 3;
+const WM_REFRESH_LAYOUT: u32 = WM_APP + 4;
 const LIST: i32 = 20;
 const TAB: i32 = 21;
 const PANEL: i32 = 22;
@@ -370,6 +371,21 @@ unsafe fn activate_existing(property: &[u16], message: u32, restore: bool) -> Re
         }
     }
 }
+unsafe fn show_main_window(hwnd: HWND) {
+    // A hidden maximized window should stay maximized. A minimized window must
+    // restore before its real client size can be used for child layout.
+    ShowWindow(
+        hwnd,
+        if IsIconic(hwnd) != 0 {
+            SW_RESTORE
+        } else {
+            SW_SHOW
+        },
+    );
+    // ShowWindow sends WM_SIZE synchronously. App may already be borrowed by
+    // the tray handler, so finish layout after that dispatch has returned.
+    PostMessageW(hwnd, WM_REFRESH_LAYOUT, 0, 0);
+}
 unsafe extern "system" fn main_proc(hwnd: HWND, message: u32, w: WPARAM, l: LPARAM) -> LRESULT {
     if message == WM_NCCREATE {
         let create = &*(l as *const CREATESTRUCTW);
@@ -390,8 +406,7 @@ unsafe extern "system" fn main_proc(hwnd: HWND, message: u32, w: WPARAM, l: LPAR
     if !pointer.is_null() && message == (*pointer).activate_message {
         // No configuration or process mutation is exposed across integrity levels.
         let enabled = GetLastActivePopup(hwnd);
-        ShowWindow(hwnd, SW_SHOW);
-        ShowWindow(hwnd, SW_RESTORE);
+        show_main_window(hwnd);
         SetForegroundWindow(if IsWindowEnabled(hwnd) == 0 && !enabled.is_null() {
             enabled
         } else {
@@ -433,21 +448,30 @@ unsafe extern "system" fn main_proc(hwnd: HWND, message: u32, w: WPARAM, l: LPAR
             return 0;
         }
         WM_CREATE | WM_SIZE | WM_DPICHANGED | WM_COMMAND | WM_NOTIFY | WM_SCROLL_FORM
-        | WM_TIMER | WM_TRAY | WM_EXIT_READY => {}
+        | WM_TIMER | WM_TRAY | WM_EXIT_READY | WM_REFRESH_LAYOUT => {}
         _ if taskbar_recreated => {}
         _ => return DefWindowProcW(hwnd, message, w, l),
     }
-    thread_local! {static DISPATCHING:std::cell::Cell<bool>=const {std::cell::Cell::new(false)};}
+    thread_local! {
+        static DISPATCHING:std::cell::Cell<bool>=const {std::cell::Cell::new(false)};
+        static LAYOUT_PENDING:std::cell::Cell<bool>=const {std::cell::Cell::new(false)};
+    }
     if DISPATCHING.with(|busy| busy.replace(true)) {
+        if matches!(message, WM_SIZE | WM_DPICHANGED | WM_REFRESH_LAYOUT) {
+            LAYOUT_PENDING.with(|pending| pending.set(true));
+        }
         return 0;
     }
-    struct DispatchGuard;
+    struct DispatchGuard(HWND);
     impl Drop for DispatchGuard {
         fn drop(&mut self) {
             DISPATCHING.with(|busy| busy.set(false));
+            if LAYOUT_PENDING.with(|pending| pending.replace(false)) {
+                unsafe { PostMessageW(self.0, WM_REFRESH_LAYOUT, 0, 0) };
+            }
         }
     }
-    let _guard = DispatchGuard;
+    let _guard = DispatchGuard(hwnd);
     let data = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *mut App;
     if data.is_null() {
         return DefWindowProcW(hwnd, message, w, l);
@@ -486,6 +510,17 @@ unsafe extern "system" fn main_proc(hwnd: HWND, message: u32, w: WPARAM, l: LPAR
             0
         }
         WM_SIZE => {
+            app.layout();
+            0
+        }
+        WM_REFRESH_LAYOUT => {
+            let dpi = GetDpiForWindow(hwnd).max(96);
+            if dpi != app.dpi {
+                app.dpi = dpi;
+                app.fonts();
+                app.update_icons();
+                app.tray(NIM_MODIFY);
+            }
             app.layout();
             0
         }
@@ -1355,11 +1390,14 @@ impl App {
         );
     }
     unsafe fn layout(&mut self) {
-        if self.ctrl(LIST).is_null() {
+        if self.ctrl(LIST).is_null() || IsIconic(self.hwnd) != 0 {
             return;
         }
         let mut rect: RECT = zeroed();
         GetClientRect(self.hwnd, &mut rect);
+        if rect.right <= 0 || rect.bottom <= 0 {
+            return;
+        }
         let width = rect.right * 96 / self.dpi as i32;
         let height = rect.bottom * 96 / self.dpi as i32;
         self.move_control(2, 20, 14, 250, 32);
@@ -2884,8 +2922,7 @@ impl App {
         Shell_NotifyIconW(operation, &data) != 0
     }
     unsafe fn restore(&self) {
-        ShowWindow(self.hwnd, SW_SHOW);
-        ShowWindow(self.hwnd, SW_RESTORE);
+        show_main_window(self.hwnd);
         SetForegroundWindow(self.hwnd);
     }
 }

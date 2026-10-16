@@ -33,6 +33,8 @@ use windows_sys::Win32::{
 mod ai_checks;
 #[path = "support/language.rs"]
 mod language_checks;
+#[path = "support/restore.rs"]
+mod restore_checks;
 unsafe fn icon_size(icon: HICON) -> Option<(i32, i32)> {
     let mut info = ICONINFO::default();
     if icon.is_null() || GetIconInfo(icon, &mut info) == 0 {
@@ -1106,6 +1108,7 @@ unsafe fn ui(store: &Store, pid: u32) -> Result<()> {
         IsWindowVisible(h) == 0,
         "background launch starts hidden with usable tray",
     )?;
+    restore_checks::run(h)?;
     let activate = RegisterWindowMessageW(wide("SuperGatewayGUI.Restore.v1").as_ptr());
     SendMessageW(h, activate, 0, 0);
     wait(|| IsWindowVisible(h) != 0)?;

@@ -1,5 +1,7 @@
 # 开发说明
 
+2026-10-16 托盘恢复布局：`show_main_window` 供托盘与注册消息唤醒共用，只在 IsIconic 时 SW_RESTORE，隐藏的最大化窗口使用 SW_SHOW。显示后投递 WM_REFRESH_LAYOUT，待 App 借用退出后同步真实窗口 DPI、字体 / 图标和完整控件布局。防重入期间的 WM_SIZE / WM_DPICHANGED / WM_REFRESH_LAYOUT 只标记 LAYOUT_PENDING，由最外层 DispatchGuard 退出时合并投递一次，避免丢失恢复尺寸或在模态消息循环中重复投递。layout 在最小化 / 零客户区时保留现有子控件几何。`src/bin/support/restore.rs` 模拟隐藏启动、最小化再隐藏、托盘 / 注册消息恢复和最大化恢复，核对完整表单与日志尺寸；接入常规原生 UI 回归，不改登录任务或系统显示设置。
+
 2026-10-15 AI 安装向导：`src/ai.rs` 实现带代理 / 取消 / 总期限 / 响应容量限制的 WinHTTP 请求、固定 GitHub 提交的资料读取、受限 Proposal 类型、包源核实和纯草稿映射；该模块不创建进程。`src/ui_ai.rs` 提供资料 / 结果 / 差异勾选三阶段原生窗口，UI 线程通过定时器接收工作线程结果，空闲不重绘。设置中可保存 Ai.BaseUrl / ApiKey / Model，复用 settings.dat DPAPI，旧文件缺失字段默认空配置；AI 设置不进入服务交换。服务草稿只在确认采用后更新，完整命令保留，setup 不写常驻参数；变量实际值只保留本机，不加入请求。模拟 API / 仓库 / 包源测试见 `tests/ai.rs`、库内 AI 测试及 `desktop-checks ai-ui`。首版无真实供应商、私有仓库或自主执行功能。
 
 便携启动验收使用 `desktop-checks prepare-portable` 从空闲端口生成受控服务，避免与用户现有 18000 服务冲突；原 `prepare` / `prepare-tls` 仍用于历史性能测量，不改变其端口规则。
